@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard — Apple Style</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <header class="header">
+        <div class="logo">MathBattle</div>
+        <div class="user-profile" id="userProfileBtn">
+            <span class="username" id="headerUsername">artem</span>
+            <div class="avatar-circle" id="headerEmoji">🔥</div>
+        </div>
+    </header>
+
+    <main class="main-container">
+        <div class="cards-grid">
+            
+            <div class="game-card">
+                <div class="card-badge">PvP Arcade</div>
+                <h2 class="card-title">Lava Pillars</h2>
+                <p class="card-description">
+                    До четырёх игроков стоят на столбах посреди моря лавы. Каждый раунд появляется математическая задача с вариантами ответов. Правильный ответ увеличивает высоту столба, а лава постепенно поднимается всё выше. В начале матча важна только точность, но чем ближе конец игры, тем сильнее влияет скорость ответа. Последний оставшийся над лавой игрок становится победителем.
+                </p>
+                <button class="play-btn">Играть</button>
+            </div>
+
+            <div class="game-card">
+                <div class="card-badge">Turn-Based Strategy</div>
+                <h2 class="card-title">Formula Wars</h2>
+                <p class="card-description">
+                    Пошаговая PvP-игра на координатной плоскости. Игроки перемещаются по карте и атакуют противников, самостоятельно создавая математические формулы. Каждая формула определяет траекторию или поведение снаряда. Победа зависит не только от знаний математики, но и от умения использовать функции, геометрию и стратегию для уничтожения соперников.
+                </p>
+                <button class="play-btn">Играть</button>
+            </div>
+
+        </div>
+    </main>
+
+    <div class="chat-widget">
+        <div class="chat-header">
+            <h3>Общий чат</h3>
+            <span class="online-badge">● Online</span>
+        </div>
+        <div class="chat-messages" id="chatMessages">
+        </div>
+        <form class="chat-input-area" id="chatForm">
+            <input type="text" id="chatInput" placeholder="Ваше сообщение..." autocomplete="off">
+            <button type="submit">➔</button>
+        </form>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>

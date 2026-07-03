@@ -2,6 +2,7 @@ package middleware
 
 import (
 	"errors"
+	"log/slog"
 	"mathbattle/auth"
 
 	"github.com/gin-gonic/gin"
@@ -14,17 +15,18 @@ type Middleware struct {
 
 func (m *Middleware) AuthMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		authHeader := c.GetHeader("Authorization")
 
-		if authHeader == "" {
+		tokenStr, err := c.Cookie("token")
+		if err != nil {
 			c.AbortWithStatusJSON(401, gin.H{
 				"error": "no token",
 			})
 			return
 		}
 
-		claims, err := m.ParseJWT(authHeader)
+		claims, err := m.ParseJWT(tokenStr)
 		if err != nil {
+			slog.Error("JWT parse failed", "err", err)
 			c.AbortWithStatusJSON(401, gin.H{
 				"error": "invalid token",
 			})
@@ -32,10 +34,8 @@ func (m *Middleware) AuthMiddleware() gin.HandlerFunc {
 		}
 
 		c.Set("user_id", claims.UserID)
-
 		c.Next()
 	}
-
 }
 
 func (m *Middleware) ParseJWT(tokenStr string) (*auth.Claims, error) {
@@ -43,7 +43,7 @@ func (m *Middleware) ParseJWT(tokenStr string) (*auth.Claims, error) {
 		tokenStr,
 		&auth.Claims{},
 		func(t *jwt.Token) (any, error) {
-			return m.JwtSecret, nil
+			return []byte(m.JwtSecret), nil
 		},
 	)
 

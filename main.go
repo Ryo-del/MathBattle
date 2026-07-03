@@ -3,10 +3,15 @@ package main
 import (
 	"context"
 	"errors"
+	"log"
 	"log/slog"
 	"os"
 
 	auth "mathbattle/auth"
+	"mathbattle/middleware"
+	"mathbattle/user"
+
+	"github.com/gin-contrib/cors"
 
 	"github.com/gin-gonic/gin"
 	"github.com/golang-migrate/migrate/v4"
@@ -20,6 +25,11 @@ type Server struct {
 	DB *pgxpool.Pool
 }
 
+func Ping(c *gin.Context) {
+	c.JSON(200, gin.H{
+		"message": "pong",
+	})
+}
 func initDatabase(dsn string) (*pgxpool.Pool, error) {
 	ctx := context.Background()
 	pool, err := pgxpool.New(ctx, dsn)
@@ -35,6 +45,7 @@ func initDatabase(dsn string) (*pgxpool.Pool, error) {
 	}
 	slog.Info("Successfully connected to the database!")
 
+	log.Println("=== БАЗА ДАННЫХ ПОЛНОСТЬЮ СБРОШЕНА ===")
 	m, err := migrate.New("file://migrations", dsn)
 	if err != nil {
 		slog.Error("Error creating migration", "err", err)
@@ -85,15 +96,39 @@ func main() {
 		DB:        pool,
 		JwtSecret: JWTkey,
 	}
-	/*mw := &middleware.Middleware{
+	userHandler := &user.Handler{
+		DB: pool,
+	}
+	mw := &middleware.Middleware{
 		JwtSecret: JWTkey,
 	}
-	*/
+
 	router := gin.Default()
+	config := cors.DefaultConfig()
+	config.AllowOrigins = []string{"http://localhost:8080", "http://127.0.0.1:8080"} // Укажи порты, на которых запускаешь сайт
+	config.AllowCredentials = true
+	config.AllowHeaders = []string{"Origin", "Content-Length", "Content-Type", "Authorization"}
+	router.Use(cors.New(config))
+	// Главная страница MathBattle
+	router.StaticFile("/", "./web/index.html")
+	router.StaticFile("/script.js", "./web/script.js")
+	router.StaticFile("/style.css", "./web/style.css")
 
-	authGroup := router.Group("/auth")
+	// Страница авторизации (Вход / Регистрация)
+	router.StaticFile("/login", "./web/auth/index.html")
+	router.Static("/auth", "./web/auth") // Позволит загружать /auth/script.js и /auth/style.css
+
+	// Профиль пользователя
+	router.StaticFile("/profile", "./web/profile/profile.html")
+	router.Static("/profile", "./web/profile")
+
+	router.Static("/static", "./web/static")
+	api := router.Group("/api")
+	authGroup := api.Group("/auth")
+	userGroup := api.Group("/user")
+	userGroup.Use(mw.AuthMiddleware())
 	auth.RegisterRoutes(authGroup, authHandler)
-
+	user.RegisterRoutes(userGroup, userHandler)
 	slog.Info("Starting server on :8080")
 	err = router.Run(":8080")
 	if err != nil {

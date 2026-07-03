@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Профиль — MathBattle</title>
+    <link rel="stylesheet" href="/profile/profile.css">
+</head>
+<body>
+
+    <header class="header">
+        <div class="logo" id="logoBtn">MathBattle</div>
+        <button class="logout-btn" id="logoutBtn">Выйти</button>
+    </header>
+
+    <main class="profile-container">
+        
+        <aside class="profile-sidebar">
+            <div class="profile-avatar" id="profileEmoji">🔥</div>
+            <h1 class="profile-username" id="profileLogin">artem</h1>
+            <div class="profile-email" id="profileEmail">test@mail.com</div>
+            
+            <div class="profile-meta">
+                <span class="meta-icon">📅</span>
+                <span class="meta-text">В сети с: <span id="createdAtDate">24.06.2026</span></span>
+            </div>
+        </aside>
+
+        <section class="profile-content">
+            <h2 class="section-title">Статистика матчей</h2>
+            
+            <div class="stats-grid">
+                <div class="stats-card">
+                    <div class="game-mode-title">Lava Pillars</div>
+                    <div class="stats-counters">
+                        <div class="stat-item">
+                            <span class="stat-value" id="lavaGames">0</span>
+                            <span class="stat-label">Игр</span>
+                        </div>
+                        <div class="stat-item win-stat">
+                            <span class="stat-value" id="lavaWins">0</span>
+                            <span class="stat-label">Побед</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="stats-card">
+                    <div class="game-mode-title">Formula Wars</div>
+                    <div class="stats-counters">
+                        <div class="stat-item">
+                            <span class="stat-value" id="formulaGames">0</span>
+                            <span class="stat-label">Игр</span>
+                        </div>
+                        <div class="stat-item win-stat">
+                            <span class="stat-value" id="formulaWins">0</span>
+                            <span class="stat-label">Побед</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <script src="/profile/profile.js"></script>
+</body>
+</html>

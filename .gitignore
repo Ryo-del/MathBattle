@@ -1,0 +1,32 @@
+# binaries
+/bin/
+/dist/
+*.exe
+*.out
+
+# test cache
+*.test
+*.cover
+
+# Go build cache
+/build/
+/vendor/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+
+# environment variables
+.env
+.env.local
+.env.*.local
+
+# logs
+*.log
+
+# database
+*.db
