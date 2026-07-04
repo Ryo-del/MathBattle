@@ -8,6 +8,7 @@ import (
 	"os"
 
 	auth "mathbattle/auth"
+	"mathbattle/chat"
 	"mathbattle/middleware"
 	"mathbattle/user"
 
@@ -102,7 +103,9 @@ func main() {
 	mw := &middleware.Middleware{
 		JwtSecret: JWTkey,
 	}
-
+	chatHandler := &chat.Handler{
+		DB: pool,
+	}
 	router := gin.Default()
 	config := cors.DefaultConfig()
 	config.AllowOrigins = []string{"http://localhost:8080", "http://127.0.0.1:8080"} // Укажи порты, на которых запускаешь сайт
@@ -126,7 +129,14 @@ func main() {
 	api := router.Group("/api")
 	authGroup := api.Group("/auth")
 	userGroup := api.Group("/user")
+	chatGroup := api.Group("/chat")
 	userGroup.Use(mw.AuthMiddleware())
+	chatGroup.Use(mw.AuthMiddleware())
+	hub := chat.NewHub()
+
+	go hub.Run() // Запуск хаба в отдельной горутине
+
+	chat.RegisterRoutes(chatGroup, hub, chatHandler)
 	auth.RegisterRoutes(authGroup, authHandler)
 	user.RegisterRoutes(userGroup, userHandler)
 	slog.Info("Starting server on :8080")

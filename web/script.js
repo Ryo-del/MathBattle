@@ -12,11 +12,12 @@ document.addEventListener('DOMContentLoaded', () => {
     // Кнопки запуска игр
     const playButtons = document.querySelectorAll('.play-btn');
 
+    // Переменная для WebSocket соединения
+    let socket = null;
+
     // --- 1. ЗАГРУЗКА ДАННЫХ ПРОФИЛЯ С БЭКЭНДА ---
     async function fetchUserProfile() {
         try {
-            // Запрашиваем краткие данные профиля (логин и эмодзи)
-            // Маршрут защищен AuthMiddleware, поэтому обязательно передаем credentials: 'include'
             const response = await fetch('/api/user/short_profile', {
                 method: 'GET',
                 credentials: 'include'
@@ -25,11 +26,12 @@ document.addEventListener('DOMContentLoaded', () => {
             if (response.ok) {
                 const data = await response.json();
                 
-                // Динамически обновляем данные в шапке
                 if (data.login) headerUsername.textContent = data.login;
                 if (data.emoji) headerEmoji.textContent = data.emoji;
+
+                // Подключаем чат ТОЛЬКО после успешного получения профиля
+                initChatWebSocket();
             } else if (response.status === 401) {
-                // Если токен невалиден или отсутствует — отправляем обратно на авторизацию
                 window.location.href = '/login';
             }
         } catch (error) {
@@ -40,51 +42,69 @@ document.addEventListener('DOMContentLoaded', () => {
     // Вызываем функцию загрузки при старте страницы
     fetchUserProfile();
 
-    // --- 2. КЛИК ПО ПРОФИЛЮ (Опциональное меню / Выход) ---
+    // --- 2. КЛИК ПО ПРОФИЛЮ ПЕРЕХОД В ЛИЧНЫЙ КАБИНЕТ ---
     userProfileBtn.addEventListener('click', () => {
-        // Здесь можно открыть выпадающее меню или предложить выйти
-        const confirmLogout = confirm('Вы хотите выйти из аккаунта?');
-        if (confirmLogout) {
-            logoutUser();
-        }
+        window.location.href = '/profile';
     });
 
-    // Функция для выхода из системы (удаление куки через бэкэнд)
-    async function logoutUser() {
+    // --- 3. РАБОТА ИНТЕРФЕЙСА ЧАТА (WebSocket) ---
+function initChatWebSocket() {
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    
+    // ИСПРАВЛЕНО: Добавлен префикс группы роутов бэкэнда /api/chat
+    const wsUrl = `${protocol}//${window.location.host}/api/chat/ws`;
+
+    socket = new WebSocket(wsUrl);
+
+    socket.onmessage = (event) => {
         try {
-            const response = await fetch('/api/auth/logout', {
-                method: 'POST',
-                credentials: 'include'
-            });
-            if (response.ok) {
-                window.location.href = '/login';
-            }
-        } catch (error) {
-            console.error('Ошибка при выходе:', error);
+            const message = JSON.parse(event.data);
+            appendMessage(message);
+        } catch (err) {
+            console.error('Ошибка парсинга сообщения чата:', err);
         }
-    }
+    };
 
-    // --- 3. РАБОТА ИНТЕРФЕЙСА ЧАТА (Фронтенд-заглушка) ---
-    chatForm.addEventListener('submit', (e) => {
-        e.preventDefault();
-        
-        const messageText = chatInput.value.trim();
-        if (!messageText) return;
+    socket.onclose = (event) => {
+        console.warn('WebSocket соединение закрыто. Попытка переподключения через 3 секунды...');
+        setTimeout(initChatWebSocket, 3000);
+    };
 
-        // Создаем элемент нового сообщения
+    socket.onerror = (error) => {
+        console.error('Ошибка WebSocket:', error);
+    };
+}
+    // Функция отрисовки сообщения в DOM
+    function appendMessage(message) {
         const messageElement = document.createElement('div');
         messageElement.style.marginBottom = '8px';
         
-        // Берем текущий логин из шапки для автора сообщения
-        const currentUser = headerUsername.textContent;
-        const currentEmoji = headerEmoji.textContent;
+        // Экранируем текст, защищаясь от XSS
+        const safeText = escapeHTML(message.text);
+        const safeLogin = escapeHTML(message.login);
+        const safeEmoji = escapeHTML(message.emoji || '💬');
 
-        messageElement.innerHTML = `<strong>${currentEmoji} ${currentUser}:</strong> ${escapeHTML(messageText)}`;
-        
+        messageElement.innerHTML = `<strong>${safeEmoji} ${safeLogin}:</strong> ${safeText}`;
         chatMessages.appendChild(messageElement);
         
-        // Скроллим чат вниз к новому сообщению
+        // Скроллим чат вниз
         chatMessages.scrollTop = chatMessages.scrollHeight;
+    }
+
+    // Отправка формы (отправка сообщения в сокет)
+    chatForm.addEventListener('submit', (e) => {
+        e.preventDefault();
+        
+        if (!socket || socket.readyState !== WebSocket.OPEN) {
+            console.error('Невозможно отправить сообщение: сокет не подключен');
+            return;
+        }
+
+        const messageText = chatInput.value.trim();
+        if (!messageText) return;
+
+        // Бэкэнд делает `conn.ReadMessage()` и берет `string(msg)`, поэтому шлем чистый текст
+        socket.send(messageText);
         
         // Очищаем поле ввода
         chatInput.value = '';
@@ -104,7 +124,6 @@ document.addEventListener('DOMContentLoaded', () => {
             const gameTitle = card.querySelector('.card-title').textContent;
             
             alert(`Подключение к игре "${gameTitle}"... (В разработке)`);
-            // В будущем здесь будет логика инициализации WebSocket-соединения или редирект в игровую комнату
         });
     });
 });
