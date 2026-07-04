@@ -1,9 +1,17 @@
-document.addEventListener("DOMContentLoaded", () => {
+document.addEventListener('DOMContentLoaded', () => {
+    // Элементы переключения вкладок и форм
+    const tabLogin = document.getElementById('tabLogin');
+    const tabSignup = document.getElementById('tabSignup');
+    const loginForm = document.getElementById('loginForm');
+    const signupForm = document.getElementById('signupForm');
+    const msgBox = document.getElementById('msgBox');
 
-    console.log("SCRIPT LOADED");
+    // Элементы смены языка
+    const langSwitcher = document.getElementById('langSwitcher');
 
-    const dictionary = {
-        ru: {
+    // Переводы для локализации
+    const translations = {
+        RU: {
             loginTab: "Вход",
             signupTab: "Регистрация",
             loginPlaceholder: "Email или логин",
@@ -13,75 +21,47 @@ document.addEventListener("DOMContentLoaded", () => {
             rememberMe: "Не выходить из аккаунта",
             loginBtn: "Войти",
             signupBtn: "Создать аккаунт",
-            errEmpty: "Пожалуйста, заполните все обязательные поля.",
-            errPasswordShort: "Пароль должен быть не менее 6 символов.",
-            errFetch: "Ошибка соединения с сервером.",
-            successLogin: "Успешный вход!",
-            successSignup: "Регистрация успешна!"
+            errorEmpty: "Пожалуйста, заполните все обязательные поля",
+            successLogin: "Успешный вход! Перенаправление...",
+            successSignup: "Аккаунт создан! Перенаправление..."
         },
-        en: {
+        EN: {
             loginTab: "Sign In",
             signupTab: "Sign Up",
             loginPlaceholder: "Email or username",
             passwordPlaceholder: "Password",
             usernamePlaceholder: "Username",
-            emojiPlaceholder: "Choose status emoji (😎, 🚀)",
+            emojiPlaceholder: "Choose emoji status (😎, 🚀)",
             rememberMe: "Keep me signed in",
             loginBtn: "Sign In",
             signupBtn: "Create Account",
-            errEmpty: "Please fill in all required fields.",
-            errPasswordShort: "Password must be at least 6 characters.",
-            errFetch: "Server connection error.",
-            successLogin: "Successfully logged in!",
-            successSignup: "Registration successful!"
+            errorEmpty: "Please fill in all required fields",
+            successLogin: "Success! Redirecting...",
+            successSignup: "Account created! Redirecting..."
         }
     };
 
-    let currentLang = 'ru';
-    const BASE_URL = '/api';
+    let currentLang = 'RU';
 
-    const langSwitcher = document.getElementById('langSwitcher');
-    const tabLogin = document.getElementById('tabLogin');
-    const tabSignup = document.getElementById('tabSignup');
-    const loginForm = document.getElementById('loginForm');
-    const signupForm = document.getElementById('signupForm');
-    const msgBox = document.getElementById('msgBox');
-
-    function showMsg(text, type = 'error') {
-        msgBox.textContent = text;
-        msgBox.className = 'msg-box';
-
-        setTimeout(() => {
-            msgBox.classList.add('show', type);
-        }, 10);
+    // Вспомогательная функция для отображения уведомлений
+    function showMessage(message, isError = true) {
+        msgBox.textContent = message;
+        msgBox.className = 'msg-box ' + (isError ? 'error' : 'success');
+        msgBox.style.display = 'block';
     }
 
-    function hideMsg() {
-        msgBox.className = 'msg-box';
+    function clearMessage() {
+        msgBox.textContent = '';
+        msgBox.style.display = 'none';
     }
 
-    // 🌍 LANG SWITCH
-    langSwitcher.addEventListener('click', () => {
-        currentLang = currentLang === 'ru' ? 'en' : 'ru';
-        langSwitcher.textContent = currentLang.toUpperCase();
-
-        document.querySelectorAll('[data-text]').forEach(el => {
-            const key = el.getAttribute('data-text');
-            if (dictionary[currentLang][key]) {
-                el.textContent = dictionary[currentLang][key];
-            }
-        });
-
-        hideMsg();
-    });
-
-    // 🔄 TABS
+    // --- 1. ПЕРЕКЛЮЧЕНИЕ ВКЛАДОК ---
     tabLogin.addEventListener('click', () => {
         tabLogin.classList.add('active');
         tabSignup.classList.remove('active');
         loginForm.classList.add('active');
         signupForm.classList.remove('active');
-        hideMsg();
+        clearMessage();
     });
 
     tabSignup.addEventListener('click', () => {
@@ -89,112 +69,106 @@ document.addEventListener("DOMContentLoaded", () => {
         tabLogin.classList.remove('active');
         signupForm.classList.add('active');
         loginForm.classList.remove('active');
-        hideMsg();
+        clearMessage();
     });
 
-    // 🔐 LOGIN
+    // --- 2. СМЕНА ЯЗЫКА (Локализация) ---
+    langSwitcher.addEventListener('click', () => {
+        currentLang = currentLang === 'RU' ? 'EN' : 'RU';
+        langSwitcher.textContent = currentLang;
+
+        // Находим все элементы с атрибутом data-text и меняем текст
+        document.querySelectorAll('[data-text]').forEach(element => {
+            const key = element.getAttribute('data-text');
+            if (translations[currentLang][key]) {
+                element.textContent = translations[currentLang][key];
+            }
+        });
+    });
+
+    // --- 3.ОТПРАВКА ФОРМЫ ВХОДА (LOGIN) ---
     loginForm.addEventListener('submit', async (e) => {
         e.preventDefault();
+        clearMessage();
 
-        const loginValue = document.getElementById('loginUser').value.trim();
-        const pass = document.getElementById('loginPassword').value.trim();
+        const identifier = document.getElementById('loginUser').value.trim();
+        const password = document.getElementById('loginPassword').value;
         const remember = document.getElementById('rememberMe').checked;
 
-        if (!loginValue || !pass) {
-            showMsg(dictionary[currentLang].errEmpty, 'error');
+        if (!identifier || !password) {
+            showMessage(translations[currentLang].errorEmpty);
             return;
         }
 
         try {
-            const response = await fetch(`${BASE_URL}/auth/login`, {
+            // Маршрут бэкэнда: /api/auth/login
+            const response = await fetch('/api/auth/login', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                credentials: 'include',
-                body: JSON.stringify({
-                    identifier: loginValue,
-                    password: pass,
-                    remember
-                })
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ identifier, password, remember }),
+                // credentials: 'include' важен для того, чтобы браузер сохранял cookies (JWT- токен) от бэкэнда
+                credentials: 'include' 
             });
 
-            const text = await response.text();
-            let data = {};
-
-            try {
-                data = text ? JSON.parse(text) : {};
-            } catch {
-                console.error("LOGIN invalid JSON:", text);
-            }
+            const data = await response.json();
 
             if (response.ok) {
-                showMsg(dictionary[currentLang].successLogin, 'success');
-                setTimeout(() => window.location.href = '/', 800);
+                showMessage(translations[currentLang].successLogin, false);
+                // Перенаправляем пользователя в профиль спустя 1.5 секунды
+                setTimeout(() => {
+                    window.location.href = '/';
+                }, 1500);
             } else {
-                showMsg(data.error || data.message || 'Error', 'error');
+                showMessage(data.error || 'Ошибка авторизации');
             }
-
-        } catch (err) {
-            console.error(err);
-            showMsg(dictionary[currentLang].errFetch, 'error');
+        } catch (error) {
+            console.error('Login error:', error);
+            showMessage('Сервер недоступен. Попробуйте позже.');
         }
     });
 
-    // 🆕 SIGNUP
+    // --- 4. ОТПРАВКА ФОРМЫ РЕГИСТРАЦИИ (SIGNUP) ---
     signupForm.addEventListener('submit', async (e) => {
         e.preventDefault();
-
-        console.log("SIGNUP FIRED");
+        clearMessage();
 
         const email = document.getElementById('signupEmail').value.trim();
         const login = document.getElementById('signupLogin').value.trim();
         const emoji = document.getElementById('signupEmoji').value.trim();
-        const pass = document.getElementById('signupPassword').value.trim();
+        const password = document.getElementById('signupPassword').value;
 
-        if (!email || !login || !pass) {
-            showMsg(dictionary[currentLang].errEmpty, 'error');
-            return;
-        }
-
-        if (pass.length < 6) {
-            showMsg(dictionary[currentLang].errPasswordShort, 'error');
+        if (!email || !login || !password) {
+            showMessage(translations[currentLang].errorEmpty);
             return;
         }
 
         try {
-            const response = await fetch(`${BASE_URL}/auth/signup`, {
+            // Маршрут бэкэнда: /api/auth/signup
+            const response = await fetch('/api/auth/signup', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                credentials: 'include',
-                body: JSON.stringify({
-                    email,
-                    login,
-                    emoji: emoji || "👤",
-                    password: pass
-                })
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ email, login, emoji, password }),
+                credentials: 'include'
             });
 
-            console.log("STATUS:", response.status);
-
-            const text = await response.text();
-            let data = {};
-
-            try {
-                data = text ? JSON.parse(text) : {};
-            } catch {
-                console.error("SIGNUP invalid JSON:", text);
-            }
+            const data = await response.json();
 
             if (response.ok) {
-                showMsg(dictionary[currentLang].successSignup, 'success');
-                setTimeout(() => window.location.href = '/', 1000);
+                showMessage(translations[currentLang].successSignup, false);
+                // Перенаправляем пользователя в профиль спустя 1.5 секунды
+                setTimeout(() => {
+                    window.location.href = '/';
+                }, 1500);
             } else {
-                showMsg(data.error || data.message || 'Error', 'error');
+                showMessage(data.error || 'Ошибка регистрации');
             }
-
-        } catch (err) {
-            console.error(err);
-            showMsg(dictionary[currentLang].errFetch, 'error');
+        } catch (error) {
+            console.error('Signup error:', error);
+            showMessage('Сервер недоступен. Попробуйте позже.');
         }
     });
-
 });
