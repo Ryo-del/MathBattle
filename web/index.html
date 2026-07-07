@@ -39,7 +39,28 @@
 
         </div>
     </main>
-
+    <div class="lobby-modal-overlay" id="lobbyModal">
+        <div class="lobby-modal-window">
+            <button class="modal-close-btn" id="closeModalBtn">&times;</button>
+            <h2 class="modal-title">Lava Pillars</h2>
+            <p class="modal-subtitle">Выберите способ подключения к игре</p>
+            
+            <div class="modal-actions-list">
+                <button class="modal-action-btn primary-btn" id="btnCreateLobby">
+                    <span>➕ Создать новое лобби</span>
+                </button>
+                
+                <button class="modal-action-btn secondary-btn" id="btnQuickJoin">
+                    <span>🚀 Быстрый поиск игры</span>
+                </button>
+                
+                <div class="modal-connect-code-block">
+                    <input type="text" id="lobbyCodeInput" placeholder="Код комнаты (напр. ABCD)" maxlength="4" autocomplete="off">
+                    <button class="modal-action-btn connect-btn" id="btnJoinByCode">Войти</button>
+                </div>
+            </div>
+        </div>
+    </div>
     <div class="chat-widget">
         <div class="chat-header">
             <h3>Общий чат</h3>

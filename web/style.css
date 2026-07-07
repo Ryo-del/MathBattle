@@ -174,7 +174,169 @@ body {
     overflow: hidden;
     z-index: 90;
 }
+/* --- СТИЛИ ДЛЯ МОДАЛЬНОГО ОКНА ЛОББИ --- */
+.lobby-modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: calc(100vw - 320px); /* Покрывает экран, не заходя под виджет чата */
+    height: 100vh;
+    background: rgba(245, 245, 247, 0.4); /* Полупрозрачный светлый фон */
+    backdrop-filter: blur(20px); /* Фирменное размытие Apple */
+    -webkit-backdrop-filter: blur(20px);
+    z-index: 105; /* Выше хедера и контента, но ниже чата (у чата сделаем 110) */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s cubic-bezier(0.25, 1, 0.5, 1);
+}
 
+/* Класс для отображения окна */
+.lobby-modal-overlay.active {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+.lobby-modal-window {
+    background: rgba(255, 255, 255, 0.85);
+    border: 1px solid rgba(0, 0, 0, 0.05);
+    backdrop-filter: blur(30px);
+    -webkit-backdrop-filter: blur(30px);
+    width: 380px;
+    border-radius: 24px;
+    padding: 32px 24px 28px 24px;
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.08);
+    position: relative;
+    transform: scale(0.95);
+    transition: transform 0.3s cubic-bezier(0.25, 1, 0.5, 1);
+}
+
+.lobby-modal-overlay.active .lobby-modal-window {
+    transform: scale(1);
+}
+
+/* Кнопка закрытия (крестик) */
+.modal-close-btn {
+    position: absolute;
+    top: 16px;
+    right: 18px;
+    background: rgba(0, 0, 0, 0.04);
+    border: none;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    font-size: 18px;
+    color: #86868b;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.2s, color 0.2s;
+}
+
+.modal-close-btn:hover {
+    background: rgba(0, 0, 0, 0.08);
+    color: #1d1d1f;
+}
+
+.modal-title {
+    font-size: 22px;
+    font-weight: 700;
+    letter-spacing: -0.5px;
+    text-align: center;
+    color: #1d1d1f;
+    margin-bottom: 4px;
+}
+
+.modal-subtitle {
+    font-size: 13px;
+    color: #86868b;
+    text-align: center;
+    margin-bottom: 24px;
+}
+
+.modal-actions-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.modal-action-btn {
+    width: 100%;
+    padding: 14px;
+    font-size: 14px;
+    font-weight: 500;
+    border-radius: 14px;
+    border: none;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.modal-action-btn.primary-btn {
+    background: #0071e3;
+    color: #fff;
+}
+
+.modal-action-btn.primary-btn:hover {
+    background: #0077ed;
+}
+
+.modal-action-btn.secondary-btn {
+    background: rgba(0, 0, 0, 0.04);
+    color: #0071e3;
+}
+
+.modal-action-btn.secondary-btn:hover {
+    background: rgba(0, 0, 0, 0.08);
+}
+
+/* Блок ввода кода */
+.modal-connect-code-block {
+    display: flex;
+    gap: 8px;
+    margin-top: 6px;
+    border-top: 1px solid rgba(0, 0, 0, 0.06);
+    padding-top: 16px;
+}
+
+.modal-connect-code-block input {
+    flex: 1;
+    padding: 12px 14px;
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    background: #fff;
+    border-radius: 12px;
+    font-size: 14px;
+    outline: none;
+    text-transform: uppercase; /* Код будет вводиться капсом */
+    text-align: center;
+    letter-spacing: 2px;
+    font-weight: 600;
+}
+
+.modal-connect-code-block input:focus {
+    border-color: #0071e3;
+}
+
+.modal-connect-code-block .connect-btn {
+    width: auto;
+    background: #34c759; /* Зеленый Apple цвет */
+    color: #fff;
+    padding: 0 20px;
+}
+
+.modal-connect-code-block .connect-btn:hover {
+    background: #28a745;
+}
+
+/* Корректировка приоритета чата */
+.chat-widget {
+    z-index: 110 !important; /* Чат гарантированно выше размытия */
+}
 .chat-header {
     padding: 14px 16px;
     border-bottom: 1px solid rgba(0, 0, 0, 0.06);

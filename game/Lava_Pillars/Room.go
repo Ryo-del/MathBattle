@@ -210,6 +210,12 @@ func (h *Handler) CreateLobby(c *gin.Context) {
 			break
 		}
 		h.HandleMessage(room, Player, msg)
+		room.Broadcast(gin.H{
+			"type": "game_started",
+			"data": gin.H{
+				"lobby_id": room.LobbyID,
+			},
+		})
 
 	}
 }
@@ -297,6 +303,12 @@ func (h *Handler) JoinRoom(c *gin.Context) {
 			break
 		}
 		h.HandleMessage(room, Player, msg)
+		room.Broadcast(gin.H{
+			"type": "game_started",
+			"data": gin.H{
+				"lobby_id": room.LobbyID,
+			},
+		})
 
 	}
 }
@@ -356,8 +368,15 @@ func (h *Handler) JoinRandomRoom(c *gin.Context) {
 			break
 		}
 		h.HandleMessage(room, Player, msg)
+		room.Broadcast(gin.H{
+			"type": "game_started",
+			"data": gin.H{
+				"lobby_id": room.LobbyID,
+			},
+		})
 
 	}
+
 }
 
 func (r *Room) Snapshot() RoomUpdate {

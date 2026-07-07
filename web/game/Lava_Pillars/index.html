@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lava Pillars — MathBattle</title>
+    <link rel="stylesheet" href="/Lava_Pillars-assets/style.css">
+</head>
+<body>
+
+    <div class="game-arena" id="gameArena">
+        <div class="lava-ocean" id="lavaOcean"></div>
+
+        <div class="pillars-container" id="pillarsContainer">
+            </div>
+
+        <div class="quiz-container" id="quizContainer">
+            <div class="quiz-bubble" id="quizQuestion">Здесь появится вопрос от админ-панели или сервера...</div>
+            <div class="quiz-timer" id="quizTimer">15:00</div>
+            <div class="answers-grid" id="answersGrid">
+                <button class="answer-btn">Вариант 1</button>
+                <button class="answer-btn">Вариант 2</button>
+                <button class="answer-btn">Вариант 3</button>
+                <button class="answer-btn">Вариант 4</button>
+            </div>
+        </div>
+
+        <div class="round-counter" id="roundCounter">Раунд: 1</div>
+    </div>
+
+    <div class="room-overlay" id="roomOverlay">
+        <div class="room-window">
+            <div class="room-header">
+                <h2>Комната: <span id="lobbyCode">---</span></h2>
+                <div class="player-count" id="playerCount">0/4</div>
+            </div>
+
+            <div class="players-list" id="playersList">
+                </div>
+
+            <div class="room-footer">
+                <button class="action-btn ready-toggle-btn" id="readyBtn">Статус: Не готов</button>
+                <button class="action-btn start-game-btn disabled" id="startBtn" disabled>Запустить игру</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="admin-panel">
+        <div class="admin-header">🛠️ Админ-Панель (Тест игры)</div>
+        <div class="admin-row">
+            <button onclick="adminSimulateQuestion()">1. Сгенерировать вопрос</button>
+        </div>
+        <div class="admin-row">
+            <button onclick="adminPlayerAnswer(true)">2. Ответ: Правильно (+1)</button>
+            <button onclick="adminPlayerAnswer(false)">Ответ: Неверно</button>
+        </div>
+        <div class="admin-row">
+            <button onclick="adminRaiseLava()">3. Поднять лаву (+50px)</button>
+        </div>
+        <div class="admin-row">
+            <button onclick="adminNextRound()">4. Следующий раунд</button>
+        </div>
+    </div>
+
+    <div class="chat-widget">
+        <div class="chat-header">
+            <h3>Общий чат</h3>
+            <span class="online-badge">● Online</span>
+        </div>
+        <div class="chat-messages" id="chatMessages"></div>
+        <form class="chat-input-area" id="chatForm">
+            <input type="text" id="chatInput" placeholder="Ваше сообщение..." autocomplete="off">
+            <button type="submit">➔</button>
+        </form>
+    </div>
+
+    <script src="/Lava_Pillars-assets/script.js"></script>
+</body>
+</html>

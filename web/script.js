@@ -11,7 +11,105 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Кнопки запуска игр
     const playButtons = document.querySelectorAll('.play-btn');
+    const lobbyModal = document.getElementById('lobbyModal');
+    const closeModalBtn = document.getElementById('closeModalBtn');
+    const btnCreateLobby = document.getElementById('btnCreateLobby');
+    const btnQuickJoin = document.getElementById('btnQuickJoin');
+    const btnJoinByCode = document.getElementById('btnJoinByCode');
+    const lobbyCodeInput = document.getElementById('lobbyCodeInput');
+    playButtons.forEach(button => {
+        button.addEventListener('click', (e) => {
+            const card = e.target.closest('.game-card');
+            const gameTitle = card.querySelector('.card-title').textContent.trim();
+            
+            if (gameTitle === "Lava Pillars") {
+                // Показываем окно добавлением класса active
+                lobbyModal.classList.add('active');
+            } else {
+                alert(`Подключение к игре "${gameTitle}"... (В разработке)`);
+            }
+        });
+    });
+   btnCreateLobby.addEventListener('click', async () => {
+        try {
+            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            // ИСПРАВЛЕНО: Маршрут изменен на /api/lavaPillars/create
+            const ws = new WebSocket(`${protocol}//${window.location.host}/api/lavaPillars/create`);
+            
+            ws.onmessage = (event) => {
+                const res = JSON.parse(event.data);
+                if (res.type === "room_created" && res.lobby_id) {
+                    ws.close();
+                    window.location.href = `/Lava_Pillars/${res.lobby_id}`;
+                }
+            };
+        } catch (error) {
+            console.error('Ошибка при создании лобби:', error);
+        }
+    });
+    closeModalBtn.addEventListener('click', () => {
+        lobbyModal.classList.remove('active');
+        lobbyCodeInput.value = '';
+    });
 
+    // Закрытие модального окна при клике на полупрозрачный фон вокруг окна
+    lobbyModal.addEventListener('click', (e) => {
+        if (e.target === lobbyModal) {
+            lobbyModal.classList.remove('active');
+            lobbyCodeInput.value = '';
+        }
+    });
+   // Кнопка 1: СОЗДАТЬ ЛОББИ
+    btnCreateLobby.addEventListener('click', async () => {
+        try {
+            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            // Используем правильный роут с префиксом /api/lavaPillars
+            const ws = new WebSocket(`${protocol}//${window.location.host}/api/lavaPillars/create`);
+            
+            ws.onmessage = (event) => {
+                const res = JSON.parse(event.data);
+                if (res.type === "room_created" && res.lobby_id) {
+                    ws.close();
+                    // Перенаправляем на страницу игры с ID созданной комнаты
+                    window.location.href = `/Lava_Pillars/${res.lobby_id}`;
+                }
+            };
+
+            ws.onerror = (err) => {
+                console.error("Ошибка WebSocket при создании комнаты:", err);
+                alert("Не удалось создать комнату. Возможно, вы не авторизованы.");
+            };
+        } catch (error) {
+            console.error('Ошибка при создании лобби:', error);
+        }
+    });
+
+  // Кнопка 2: БЫСТРЫЙ ПОИСК
+  btnQuickJoin.addEventListener('click', () => {
+        window.location.href = `/Lava_Pillars/quick`;
+    });
+
+    // Кнопка 3: ПОДКЛЮЧЕНИЕ ПО КОДУ
+    btnJoinByCode.addEventListener('click', () => {
+        const code = lobbyCodeInput.value.trim().toUpperCase();
+        if (!code) {
+            alert('Пожалуйста, введите код комнаты.');
+            return;
+        }
+        if (code.length !== 4) {
+            alert('Код комнаты должен состоять из 4 символов.');
+            return;
+        }
+        // Переходим в комнату по коду
+        window.location.href = `/Lava_Pillars/${code}`;
+    });
+
+   // Позволяем отправлять код комнаты кнопкой Enter на клавиатуре
+    lobbyCodeInput.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+            btnJoinByCode.click();
+        }
+    });
     // Переменная для WebSocket соединения
     let socket = null;
     let currentUserLogin = '';
@@ -85,7 +183,76 @@ document.addEventListener('DOMContentLoaded', () => {
             console.error('Ошибка при загрузке истории чата:', error);
         }
     }
+    // --- ИНИЦИАЛИЗАЦИЯ ИГРОВОГО ВЕБСОКЕТА ---
+    function initGameWebSocket() {
+        if (!lobbyId) return;
+        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        
+        let wsUrl = '';
+        // Если в URL написано 'quick', подключаемся к ручке быстрого поиска
+        if (lobbyId === 'quick') {
+            wsUrl = `${protocol}//${window.location.host}/api/lavaPillars/quick`;
+        } else {
+            // Иначе подключаемся к конкретной комнате по её ID
+            wsUrl = `${protocol}//${window.location.host}/api/lavaPillars/join/${lobbyId}`;
+        }
 
+        gameSocket = new WebSocket(wsUrl);
+
+        gameSocket.onmessage = (event) => {
+            try {
+                const msg = JSON.parse(event.data);
+                
+                // 1. ОБРАБОТКА СОБЫТИЯ НАЧАЛА ИГРЫ И ПОЛУЧЕНИЯ РЕАЛЬНОГО LOBBY_ID
+                if (msg.type === "game_started" && msg.data && msg.data.lobby_id) {
+                    const realLobbyId = msg.data.lobby_id;
+                    
+                    // Обновляем глобальную переменную lobbyId, чтобы логика работала верно
+                    lobbyId = realLobbyId; 
+                    
+                    // Меняем 'quick' в адресной строке на реальный ID (например, ABCD) без перезагрузки страницы
+                    window.history.replaceState(null, '', `/Lava_Pillars/${realLobbyId}`);
+                    
+                    // Если на экране есть элемент, отображающий код комнаты, обновляем его текст
+                    const lobbyCodeSpan = document.getElementById('lobbyCodeSpan');
+                    if (lobbyCodeSpan) {
+                        lobbyCodeSpan.textContent = realLobbyId;
+                    }
+                    
+                    // Вызываем твой внутренний обработчик старта игры (если он есть)
+                    if (typeof handleGameStart === 'function') {
+                        handleGameStart(msg.data);
+                    }
+                    return;
+                }
+
+                // 2. ОБРАБОТКА ОБНОВЛЕНИЯ КОМНАТЫ (Список игроков, статусы готовности)
+                if (msg.type === "room_update") {
+                    if (typeof handleRoomUpdate === 'function') {
+                        handleRoomUpdate(msg);
+                    }
+                } 
+                // 3. ОБРАБОТКА ОШИБОК ОТ БЭКЭНДА
+                else if (msg.type === "error") {
+                    alert(msg.message || "Произошла ошибка в комнате");
+                }
+            } catch (err) {
+                console.error("Ошибка при обработке сообщения от игрового сокета:", err);
+            }
+        };
+
+        gameSocket.onclose = (e) => {
+            console.warn("Соединение с игровой комнатой закрыто. Код:", e.code);
+            // Автоматический реконнект через 3 секунды, если это не было намеренным закрытием
+            if (e.code !== 1000) {
+                setTimeout(initGameWebSocket, 3000);
+            }
+        };
+
+        gameSocket.onerror = (err) => {
+            console.error("Ошибка WebSocket соединения игры:", err);
+        };
+    }
     // Инициализация WebSocket-соединения
     function initChatWebSocket() {
         const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
@@ -159,13 +326,5 @@ document.addEventListener('DOMContentLoaded', () => {
         );
     }
 
-    // --- 4. ОБРАБОТКА НАЖАТИЯ НА КНОПКИ «ИГРАТЬ» ---
-    playButtons.forEach(button => {
-        button.addEventListener('click', (e) => {
-            const card = e.target.closest('.game-card');
-            const gameTitle = card.querySelector('.card-title').textContent;
-            
-            alert(`Подключение к игре "${gameTitle}"... (В разработке)`);
-        });
-    });
+   
 });

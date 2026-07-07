@@ -9,6 +9,7 @@ import (
 
 	auth "mathbattle/auth"
 	"mathbattle/chat"
+	Pillars "mathbattle/game/Lava_Pillars"
 	"mathbattle/middleware"
 	"mathbattle/user"
 
@@ -106,6 +107,12 @@ func main() {
 	chatHandler := &chat.Handler{
 		DB: pool,
 	}
+	roomManager := Pillars.NewRoomManager()
+
+	pillarsHandler := &Pillars.Handler{
+		DB:      pool,
+		Manager: roomManager,
+	}
 	router := gin.Default()
 	config := cors.DefaultConfig()
 	config.AllowOrigins = []string{"http://localhost:8080", "http://127.0.0.1:8080"} // Укажи порты, на которых запускаешь сайт
@@ -127,12 +134,20 @@ func main() {
 	router.GET("/profile/:login", func(c *gin.Context) {
 		c.File("./web/profile/index.html")
 	})
+
+	//Lava Pillars
+	router.Static("/Lava_Pillars-assets", "./web/game/Lava_Pillars/")
+	router.GET("/Lava_Pillars/:id", func(c *gin.Context) {
+		c.File("./web/game/Lava_Pillars/index.html")
+	})
 	router.Static("/static", "./web/static")
 	api := router.Group("/api")
 	authGroup := api.Group("/auth")
 	userGroup := api.Group("/user")
 	chatGroup := api.Group("/chat")
+	lavaPillarsGroup := api.Group("/lavaPillars")
 	userGroup.Use(mw.AuthMiddleware())
+	lavaPillarsGroup.Use(mw.AuthMiddleware())
 	chatGroup.Use(mw.AuthMiddleware())
 	hub := chat.NewHub()
 
@@ -141,6 +156,7 @@ func main() {
 	chat.RegisterRoutes(chatGroup, hub, chatHandler)
 	auth.RegisterRoutes(authGroup, authHandler)
 	user.RegisterRoutes(userGroup, userHandler)
+	Pillars.RegisterRouters(lavaPillarsGroup, pillarsHandler)
 	slog.Info("Starting server on :8080")
 	err = router.Run(":8080")
 	if err != nil {
