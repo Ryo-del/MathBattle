@@ -237,7 +237,21 @@ body {
     outline: none;
     transition: border 0.2s;
 }
-
+.chat-author-link {
+    text-decoration: none; /* Убираем стандартное подчеркивание */
+    color: #1d1d1f;        /* Фирменный темный цвет Apple */
+    cursor: pointer;
+    transition: color 0.2s ease;
+    display: inline-block;
+}
+.chat-messages span {
+    color: #1d1d1f;
+    word-break: break-word;
+}
+.chat-author-link:hover {
+    color: #0071e3;        /* Ник становится синим (Apple Blue) при наведении */
+    text-decoration: underline; /* Добавляем аккуратное подчеркивание */
+}
 .chat-input-area input:focus {
     border-color: #0071e3;
 }

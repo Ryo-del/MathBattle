@@ -24,62 +24,29 @@ type Profile struct {
 	CreatedAt        time.Time `json:"created_at"`
 }
 
-func (h *Handler) GetProfile(c *gin.Context) {
-	userIDAny, exists := c.Get("user_id")
-	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{
-			"error": "no user in context",
-		})
-		return
-	}
+func (h *Handler) GetProfileByLogin(c *gin.Context) {
+	login := c.Param("login")
 
-	userID, ok := userIDAny.(int64)
-	if !ok {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": "invalid user id type",
-		})
-		return
-	}
-
-	var p Profile
-
+	var profile Profile
 	err := h.DB.QueryRow(
 		c.Request.Context(),
 		`
-		SELECT 
-			login,
-			emoji,
-			email,
-			lava_pillars_games,
-			lava_pillars_wins,
-			formula_wars_games,
-			formula_wars_wins,
-			created_at
+		SELECT login, emoji, email, lava_pillars_games, lava_pillars_wins, formula_wars_games, formula_wars_wins, created_at
 		FROM users
-		WHERE id = $1
+		WHERE login = $1
 		`,
-		userID,
-	).Scan(
-		&p.Login,
-		&p.Emoji,
-		&p.Email,
-		&p.LavaPillarsGames,
-		&p.LavaPillarsWins,
-		&p.FormulaWarsGames,
-		&p.FormulaWarsWins,
-		&p.CreatedAt,
-	)
+		login,
+	).Scan(&profile.Login, &profile.Emoji, &profile.Email, &profile.LavaPillarsGames, &profile.LavaPillarsWins, &profile.FormulaWarsGames, &profile.FormulaWarsWins, &profile.CreatedAt)
 
 	if err != nil {
 		slog.Error("db error", "err", err)
-
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": "internal server error",
 		})
 		return
 	}
 
-	c.JSON(http.StatusOK, p)
+	c.JSON(http.StatusOK, profile)
 }
 
 func (h *Handler) GetShortProfile(c *gin.Context) {

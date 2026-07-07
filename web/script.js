@@ -14,7 +14,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Переменная для WebSocket соединения
     let socket = null;
-
+    let currentUserLogin = '';
     // --- 1. ЗАГРУЗКА ДАННЫХ ПРОФИЛЯ С БЭКЭНДА ---
     async function fetchUserProfile() {
         try {
@@ -26,10 +26,14 @@ document.addEventListener('DOMContentLoaded', () => {
             if (response.ok) {
                 const data = await response.json();
                 
-                if (data.login) headerUsername.textContent = data.login;
+                if (data.login) {
+                    headerUsername.textContent = data.login;
+                    currentUserLogin = data.login; // ИСПРАВЛЕНО: Сохраняем логин для последующего перехода
+                }
                 if (data.emoji) headerEmoji.textContent = data.emoji;
 
-                // Подключаем чат ТОЛЬКО после успешного получения профиля
+                // СНАЧАЛА подгружаем историю, ЗАТЕМ открываем вебсокет
+                await fetchChatHistory();
                 initChatWebSocket();
             } else if (response.status === 401) {
                 window.location.href = '/login';
@@ -44,36 +48,70 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- 2. КЛИК ПО ПРОФИЛЮ ПЕРЕХОД В ЛИЧНЫЙ КАБИНЕТ ---
     userProfileBtn.addEventListener('click', () => {
-        window.location.href = '/profile';
+        // ИСПРАВЛЕНО: Перенаправляем на динамический роут, если логин успел загрузиться
+        if (currentUserLogin) {
+            window.location.href = `/profile/${currentUserLogin}`;
+        } else {
+            // Фолбек на случай, если пользователь кликнул до завершения fetch-запроса
+            window.location.href = '/login';
+        }
     });
 
-    // --- 3. РАБОТА ИНТЕРФЕЙСА ЧАТА (WebSocket) ---
-function initChatWebSocket() {
-    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    
-    // ИСПРАВЛЕНО: Добавлен префикс группы роутов бэкэнда /api/chat
-    const wsUrl = `${protocol}//${window.location.host}/api/chat/ws`;
+    // --- 3. РАБОТА ИНТЕРФЕЙСА ЧАТА (История и WebSocket) ---
 
-    socket = new WebSocket(wsUrl);
-
-    socket.onmessage = (event) => {
+    // Подгрузка истории чата с бэкэнда
+    async function fetchChatHistory() {
         try {
-            const message = JSON.parse(event.data);
-            appendMessage(message);
-        } catch (err) {
-            console.error('Ошибка парсинга сообщения чата:', err);
+            // Маршрут /api/chat/history защищен AuthMiddleware бэкэнда
+            const response = await fetch('/api/chat/history', {
+                method: 'GET',
+                credentials: 'include'
+            });
+
+            if (response.ok) {
+                const messages = await response.json();
+                
+                // Проверяем, что вернулся не пустой массив
+                if (messages && messages.length > 0) {
+                    // Разворачиваем массив обратно (чтобы старые были вверху, а новые внизу)
+                    messages.reverse().forEach(message => {
+                        appendMessage(message);
+                    });
+                }
+            } else {
+                console.error('Не удалось загрузить историю чата:', response.statusText);
+            }
+        } catch (error) {
+            console.error('Ошибка при загрузке истории чата:', error);
         }
-    };
+    }
 
-    socket.onclose = (event) => {
-        console.warn('WebSocket соединение закрыто. Попытка переподключения через 3 секунды...');
-        setTimeout(initChatWebSocket, 3000);
-    };
+    // Инициализация WebSocket-соединения
+    function initChatWebSocket() {
+        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        const wsUrl = `${protocol}//${window.location.host}/api/chat/ws`;
 
-    socket.onerror = (error) => {
-        console.error('Ошибка WebSocket:', error);
-    };
-}
+        socket = new WebSocket(wsUrl);
+
+        socket.onmessage = (event) => {
+            try {
+                const message = JSON.parse(event.data);
+                appendMessage(message);
+            } catch (err) {
+                console.error('Ошибка парсинга сообщения чата:', err);
+            }
+        };
+
+        socket.onclose = (event) => {
+            console.warn('WebSocket соединение закрыто. Попытка переподключения через 3 секунды...', event.reason);
+            setTimeout(initChatWebSocket, 3000);
+        };
+
+        socket.onerror = (error) => {
+            console.error('Ошибка WebSocket:', error);
+        };
+    }
+
     // Функция отрисовки сообщения в DOM
     function appendMessage(message) {
         const messageElement = document.createElement('div');
@@ -84,7 +122,12 @@ function initChatWebSocket() {
         const safeLogin = escapeHTML(message.login);
         const safeEmoji = escapeHTML(message.emoji || '💬');
 
-        messageElement.innerHTML = `<strong>${safeEmoji} ${safeLogin}:</strong> ${safeText}`;
+        messageElement.innerHTML = `
+            <a href="/profile/${safeLogin}" class="chat-author-link">
+                <strong>${safeEmoji} ${safeLogin}:</strong>
+            </a> 
+            <span>${safeText}</span>
+        `;
         chatMessages.appendChild(messageElement);
         
         // Скроллим чат вниз
@@ -103,7 +146,6 @@ function initChatWebSocket() {
         const messageText = chatInput.value.trim();
         if (!messageText) return;
 
-        // Бэкэнд делает `conn.ReadMessage()` и берет `string(msg)`, поэтому шлем чистый текст
         socket.send(messageText);
         
         // Очищаем поле ввода

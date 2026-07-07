@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Профиль — MathBattle</title>
-    <link rel="stylesheet" href="/profile/profile.css">
+    <link rel="stylesheet" href="/profile-assets/style.css">
 </head>
 <body>
 
@@ -16,9 +16,9 @@
     <main class="profile-container">
         
         <aside class="profile-sidebar">
-            <div class="profile-avatar" id="profileEmoji">🔥</div>
-            <h1 class="profile-username" id="profileLogin">artem</h1>
-            <div class="profile-email" id="profileEmail">test@mail.com</div>
+            <div class="profile-avatar" id="profileEmoji">🌝</div>
+            <h1 class="profile-username" id="profileLogin">Пустой профиль</h1>
+            <div class="profile-email" id="profileEmail">Пустой email</div>
             
             <div class="profile-meta">
                 <span class="meta-icon">📅</span>
@@ -59,9 +59,20 @@
                 </div>
             </div>
         </section>
-
+        <div class="chat-widget">
+        <div class="chat-header">
+            <h3>Общий чат</h3>
+            <span class="online-badge">● Online</span>
+        </div>
+        <div class="chat-messages" id="chatMessages">
+        </div>
+        <form class="chat-input-area" id="chatForm">
+            <input type="text" id="chatInput" placeholder="Ваше сообщение..." autocomplete="off">
+            <button type="submit">➔</button>
+        </form>
+    </div>
     </main>
 
-    <script src="/profile/profile.js"></script>
+    <script src="/profile-assets/script.js"></script>
 </body>
 </html>

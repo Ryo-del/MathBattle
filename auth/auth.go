@@ -54,7 +54,9 @@ func (h *Handler) SignUpHandler(c *gin.Context) {
 		c.JSON(500, gin.H{"error": "internal server error"})
 		return
 	}
-
+	if req.Emoji == "" {
+		req.Emoji = "🤓"
+	}
 	var userID int64
 
 	// Используем QueryRow и RETURNING id, чтобы получить сгенерированный базой ID нового пользователя

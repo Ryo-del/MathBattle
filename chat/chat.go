@@ -1,6 +1,7 @@
 package chat
 
 import (
+	"context"
 	"log/slog"
 	"net/http"
 
@@ -19,6 +20,35 @@ var upgrader = websocket.Upgrader{
 	},
 }
 
+func SaveHistoryMessage(db *pgxpool.Pool, message Message) error {
+	_, err := db.Exec(context.Background(), "INSERT INTO messages (user_id, emoji, login, text) VALUES ($1, $2, $3, $4)", message.UserID, message.Emoji, message.Login, message.Text)
+	if err != nil {
+		slog.Error("Failed to save message to database", "err", err)
+		return err
+	}
+	return nil
+}
+
+func HandlerGetHistoryMessages(db *pgxpool.Pool) ([]Message, error) {
+	rows, err := db.Query(context.Background(), "SELECT user_id, emoji, login, text FROM messages ORDER BY id DESC LIMIT 50")
+	if err != nil {
+		slog.Error("Failed to get messages from database", "err", err)
+		return nil, err
+	}
+	defer rows.Close()
+
+	var messages []Message
+	for rows.Next() {
+		var message Message
+		err := rows.Scan(&message.UserID, &message.Emoji, &message.Login, &message.Text)
+		if err != nil {
+			slog.Error("Failed to scan message", "err", err)
+			return nil, err
+		}
+		messages = append(messages, message)
+	}
+	return messages, nil
+}
 func HandlerWebSocket(c *gin.Context, hub *Hub, h *Handler) {
 
 	conn, err := upgrader.Upgrade(c.Writer, c.Request, nil)
@@ -62,6 +92,7 @@ func HandlerWebSocket(c *gin.Context, hub *Hub, h *Handler) {
 		}
 
 		hub.broadcast <- message
+		SaveHistoryMessage(h.DB, message)
 	}
 
 }

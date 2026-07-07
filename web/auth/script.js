@@ -45,15 +45,18 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Вспомогательная функция для отображения уведомлений
     function showMessage(message, isError = true) {
-        msgBox.textContent = message;
-        msgBox.className = 'msg-box ' + (isError ? 'error' : 'success');
-        msgBox.style.display = 'block';
-    }
+    msgBox.textContent = message;
+    msgBox.classList.remove('error', 'success');
+    msgBox.classList.add(isError ? 'error' : 'success');
+    
+    msgBox.classList.add('show');
+}
 
-    function clearMessage() {
-        msgBox.textContent = '';
-        msgBox.style.display = 'none';
-    }
+function clearMessage() {
+    msgBox.textContent = '';
+    
+    msgBox.classList.remove('show');
+}
 
     // --- 1. ПЕРЕКЛЮЧЕНИЕ ВКЛАДОК ---
     tabLogin.addEventListener('click', () => {

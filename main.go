@@ -121,10 +121,12 @@ func main() {
 	router.StaticFile("/login", "./web/auth/index.html")
 	router.Static("/auth", "./web/auth") // Позволит загружать /auth/script.js и /auth/style.css
 
-	// Профиль пользователя
-	router.StaticFile("/profile", "./web/profile/profile.html")
-	router.Static("/profile", "./web/profile")
+	router.Static("/login", "./web/login")
+	router.Static("/profile-assets", "./web/profile")
 
+	router.GET("/profile/:login", func(c *gin.Context) {
+		c.File("./web/profile/index.html")
+	})
 	router.Static("/static", "./web/static")
 	api := router.Group("/api")
 	authGroup := api.Group("/auth")
