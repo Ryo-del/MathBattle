@@ -1,0 +1,302 @@
+[
+  {
+    "id": "1",
+    "text": "2 + 2 = ?",
+    "variants": ["3", "4", "5", "6"],
+    "correct_answer": 1
+  },
+  {
+    "id": "2",
+    "text": "15 * 15 = ?",
+    "variants": ["225", "250", "255", "300"],
+    "correct_answer": 0
+  },
+  {
+    "id": "3",
+    "text": "120 / 4 = ?",
+    "variants": ["20", "25", "30", "35"],
+    "correct_answer": 2
+  },
+  {
+    "id": "4",
+    "text": "7 * 8 = ?",
+    "variants": ["54", "56", "62", "64"],
+    "correct_answer": 1
+  },
+  {
+    "id": "5",
+    "text": "45 - 19 = ?",
+    "variants": ["24", "26", "28", "36"],
+    "correct_answer": 1
+  },
+  {
+    "id": "6",
+    "text": "9 * 9 = ?",
+    "variants": ["72", "81", "90", "99"],
+    "correct_answer": 1
+  },
+  {
+    "id": "7",
+    "text": "13 + 27 = ?",
+    "variants": ["37", "39", "40", "41"],
+    "correct_answer": 2
+  },
+  {
+    "id": "8",
+    "text": "100 / 5 = ?",
+    "variants": ["15", "20", "25", "30"],
+    "correct_answer": 1
+  },
+  {
+    "id": "9",
+    "text": "14 * 3 = ?",
+    "variants": ["32", "38", "42", "46"],
+    "correct_answer": 2
+  },
+  {
+    "id": "10",
+    "text": "64 / 8 = ?",
+    "variants": ["6", "7", "8", "9"],
+    "correct_answer": 2
+  },
+  {
+    "id": "11",
+    "text": "50 * 4 = ?",
+    "variants": ["150", "180", "200", "250"],
+    "correct_answer": 2
+  },
+  {
+    "id": "12",
+    "text": "81 - 36 = ?",
+    "variants": ["45", "47", "55", "57"],
+    "correct_answer": 0
+  },
+  {
+    "id": "13",
+    "text": "12 * 12 = ?",
+    "variants": ["124", "134", "144", "154"],
+    "correct_answer": 2
+  },
+  {
+    "id": "14",
+    "text": "250 / 10 = ?",
+    "variants": ["20", "25", "30", "35"],
+    "correct_answer": 1
+  },
+  {
+    "id": "15",
+    "text": "99 + 11 = ?",
+    "variants": ["100", "110", "111", "120"],
+    "correct_answer": 1
+  },
+  {
+    "id": "16",
+    "text": "7 * 6 = ?",
+    "variants": ["36", "42", "48", "54"],
+    "correct_answer": 1
+  },
+  {
+    "id": "17",
+    "text": "150 - 75 = ?",
+    "variants": ["65", "70", "75", "80"],
+    "correct_answer": 2
+  },
+  {
+    "id": "18",
+    "text": "11 * 11 = ?",
+    "variants": ["111", "121", "131", "141"],
+    "correct_answer": 1
+  },
+  {
+    "id": "19",
+    "text": "36 / 3 = ?",
+    "variants": ["11", "12", "13", "14"],
+    "correct_answer": 1
+  },
+  {
+    "id": "20",
+    "text": "48 + 52 = ?",
+    "variants": ["90", "96", "100", "110"],
+    "correct_answer": 2
+  },
+  {
+    "id": "21",
+    "text": "13 * 4 = ?",
+    "variants": ["42", "48", "52", "56"],
+    "correct_answer": 2
+  },
+  {
+    "id": "22",
+    "text": "144 / 12 = ?",
+    "variants": ["10", "11", "12", "14"],
+    "correct_answer": 2
+  },
+  {
+    "id": "23",
+    "text": "200 - 45 = ?",
+    "variants": ["145", "155", "165", "175"],
+    "correct_answer": 1
+  },
+  {
+    "id": "24",
+    "text": "8 * 9 = ?",
+    "variants": ["64", "72", "81", "82"],
+    "correct_answer": 1
+  },
+  {
+    "id": "25",
+    "text": "75 + 25 = ?",
+    "variants": ["90", "95", "100", "105"],
+    "correct_answer": 2
+  },
+  {
+    "id": "26",
+    "text": "60 / 5 = ?",
+    "variants": ["10", "11", "12", "15"],
+    "correct_answer": 2
+  },
+  {
+    "id": "27",
+    "text": "16 * 2 = ?",
+    "variants": ["30", "32", "34", "36"],
+    "correct_answer": 1
+  },
+  {
+    "id": "28",
+    "text": "90 - 33 = ?",
+    "variants": ["53", "57", "63", "67"],
+    "correct_answer": 1
+  },
+  {
+    "id": "29",
+    "text": "6 * 6 = ?",
+    "variants": ["32", "36", "42", "46"],
+    "correct_answer": 1
+  },
+  {
+    "id": "30",
+    "text": "400 / 4 = ?",
+    "variants": ["10", "50", "100", "200"],
+    "correct_answer": 2
+  },
+  {
+    "id": "31",
+    "text": "17 + 18 = ?",
+    "variants": ["33", "34", "35", "36"],
+    "correct_answer": 2
+  },
+  {
+    "id": "32",
+    "text": "25 * 4 = ?",
+    "variants": ["75", "100", "125", "150"],
+    "correct_answer": 1
+  },
+  {
+    "id": "33",
+    "text": "180 / 9 = ?",
+    "variants": ["20", "30", "40", "50"],
+    "correct_answer": 0
+  },
+  {
+    "id": "34",
+    "text": "70 - 24 = ?",
+    "variants": ["44", "46", "54", "56"],
+    "correct_answer": 1
+  },
+  {
+    "id": "35",
+    "text": "12 * 5 = ?",
+    "variants": ["50", "55", "60", "65"],
+    "correct_answer": 2
+  },
+  {
+    "id": "36",
+    "text": "85 + 15 = ?",
+    "variants": ["90", "95", "100", "105"],
+    "correct_answer": 2
+  },
+  {
+    "id": "37",
+    "text": "49 / 7 = ?",
+    "variants": ["6", "7", "8", "9"],
+    "correct_answer": 1
+  },
+  {
+    "id": "38",
+    "text": "15 * 4 = ?",
+    "variants": ["50", "55", "60", "65"],
+    "correct_answer": 2
+  },
+  {
+    "id": "39",
+    "text": "123 - 23 = ?",
+    "variants": ["90", "100", "110", "120"],
+    "correct_answer": 1
+  },
+  {
+    "id": "40",
+    "text": "8 * 8 = ?",
+    "variants": ["56", "60", "64", "68"],
+    "correct_answer": 2
+  },
+  {
+    "id": "41",
+    "text": "22 + 33 = ?",
+    "variants": ["44", "55", "66", "77"],
+    "correct_answer": 1
+  },
+  {
+    "id": "42",
+    "text": "300 / 6 = ?",
+    "variants": ["40", "50", "60", "70"],
+    "correct_answer": 1
+  },
+  {
+    "id": "43",
+    "text": "14 * 5 = ?",
+    "variants": ["60", "65", "70", "75"],
+    "correct_answer": 2
+  },
+  {
+    "id": "44",
+    "text": "95 - 40 = ?",
+    "variants": ["45", "50", "55", "60"],
+    "correct_answer": 2
+  },
+  {
+    "id": "45",
+    "text": "11 * 5 = ?",
+    "variants": ["45", "50", "55", "60"],
+    "correct_answer": 2
+  },
+  {
+    "id": "46",
+    "text": "63 / 9 = ?",
+    "variants": ["6", "7", "8", "9"],
+    "correct_answer": 1
+  },
+  {
+    "id": "47",
+    "text": "250 + 250 = ?",
+    "variants": ["400", "450", "500", "550"],
+    "correct_answer": 2
+  },
+  {
+    "id": "48",
+    "text": "18 * 2 = ?",
+    "variants": ["32", "34", "36", "38"],
+    "correct_answer": 2
+  },
+  {
+    "id": "49",
+    "text": "500 / 5 = ?",
+    "variants": ["50", "100", "150", "200"],
+    "correct_answer": 1
+  },
+  {
+    "id": "50",
+    "text": "105 - 15 = ?",
+    "variants": ["80", "85", "90", "95"],
+    "correct_answer": 2
+  }
+]

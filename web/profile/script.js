@@ -47,6 +47,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (response.ok) {
                 const data = await response.json();
+
+                console.log(data);
+                renderProfileData(data);
                 renderProfileData(data);
 
                 // После загрузки профиля инициализируем чат (сначала история, потом сокет)

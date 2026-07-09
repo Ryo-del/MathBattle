@@ -3,13 +3,13 @@ package auth
 import (
 	"errors"
 	"log/slog"
+	"mathbattle/repo"
 	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
-	"github.com/jackc/pgx/v5/pgxpool"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -30,7 +30,7 @@ type LogInRequest struct {
 
 // Handler инкапсулирует зависимости для работы с авторизацией
 type Handler struct {
-	DB        *pgxpool.Pool
+	repo      repo.Repository
 	JwtSecret string
 }
 
@@ -38,6 +38,13 @@ type Handler struct {
 type Claims struct {
 	UserID int64 `json:"user_id"`
 	jwt.RegisteredClaims
+}
+
+func NewHandler(repo *repo.Repository, JWT string) *Handler {
+	return &Handler{
+		repo:      *repo,
+		JwtSecret: JWT,
+	}
 }
 
 // SignUpHandler регистрирует нового пользователя и сразу авторизует его (ставит JWT-куку)
@@ -58,19 +65,7 @@ func (h *Handler) SignUpHandler(c *gin.Context) {
 		req.Emoji = "🤓"
 	}
 	var userID int64
-
-	// Используем QueryRow и RETURNING id, чтобы получить сгенерированный базой ID нового пользователя
-	err = h.DB.QueryRow(
-		c.Request.Context(),
-		`INSERT INTO users (email, login, emoji, password_hash, created_at)
-        VALUES ($1, $2, $3, $4, $5) RETURNING id`,
-		req.Email,
-		req.Login,
-		req.Emoji,
-		hash,
-		time.Now(),
-	).Scan(&userID)
-
+	userID, err = h.repo.SignUpUser(req.Email, req.Login, req.Emoji, hash)
 	if err != nil {
 		var pgErr *pgconn.PgError
 		if errors.As(err, &pgErr) {
@@ -119,23 +114,8 @@ func (h *Handler) LogInHandler(c *gin.Context) {
 		c.JSON(400, gin.H{"error": "invalid json"})
 		return
 	}
-	var (
-		userID       int64
-		passwordHash string
-	)
 
-	// Ищем пользователя по логину или по email
-	err := h.DB.QueryRow(
-		c.Request.Context(),
-		`
-        SELECT id, password_hash
-        FROM users
-        WHERE login = $1
-        OR email = $1
-    `,
-		req.Identifier,
-	).Scan(&userID, &passwordHash)
-
+	userID, passwordHash, err := h.repo.LogInUser(req.Identifier)
 	if errors.Is(err, pgx.ErrNoRows) {
 		c.JSON(401, gin.H{
 			"error": "invalid credentials",

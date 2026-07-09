@@ -11,11 +11,10 @@
     <div class="game-arena" id="gameArena">
         <div class="lava-ocean" id="lavaOcean"></div>
 
-        <div class="pillars-container" id="pillarsContainer">
-            </div>
+        <div class="pillars-container" id="pillarsContainer"></div>
 
         <div class="quiz-container" id="quizContainer">
-            <div class="quiz-bubble" id="quizQuestion">Здесь появится вопрос от админ-панели или сервера...</div>
+            <div class="quiz-bubble" id="quizQuestion">Ожидание вопроса от сервера...</div>
             <div class="quiz-timer" id="quizTimer">15:00</div>
             <div class="answers-grid" id="answersGrid">
                 <button class="answer-btn">Вариант 1</button>
@@ -26,6 +25,10 @@
         </div>
 
         <div class="round-counter" id="roundCounter">Раунд: 1</div>
+
+        <div class="countdown-overlay" id="countdownOverlay" style="display: none;">
+            <div class="countdown-number" id="countdownNumber">3</div>
+        </div>
     </div>
 
     <div class="room-overlay" id="roomOverlay">
@@ -34,10 +37,7 @@
                 <h2>Комната: <span id="lobbyCode">---</span></h2>
                 <div class="player-count" id="playerCount">0/4</div>
             </div>
-
-            <div class="players-list" id="playersList">
-                </div>
-
+            <div class="players-list" id="playersList"></div>
             <div class="room-footer">
                 <button class="action-btn ready-toggle-btn" id="readyBtn">Статус: Не готов</button>
                 <button class="action-btn start-game-btn disabled" id="startBtn" disabled>Запустить игру</button>
@@ -45,20 +45,11 @@
         </div>
     </div>
 
-    <div class="admin-panel">
-        <div class="admin-header">🛠️ Админ-Панель (Тест игры)</div>
-        <div class="admin-row">
-            <button onclick="adminSimulateQuestion()">1. Сгенерировать вопрос</button>
-        </div>
-        <div class="admin-row">
-            <button onclick="adminPlayerAnswer(true)">2. Ответ: Правильно (+1)</button>
-            <button onclick="adminPlayerAnswer(false)">Ответ: Неверно</button>
-        </div>
-        <div class="admin-row">
-            <button onclick="adminRaiseLava()">3. Поднять лаву (+50px)</button>
-        </div>
-        <div class="admin-row">
-            <button onclick="adminNextRound()">4. Следующий раунд</button>
+    <div class="room-overlay" id="gameOverOverlay" style="display: none;">
+        <div class="room-window text-center">
+            <h1 id="gameOverTitle" style="font-size: 32px; margin-bottom: 10px;">🏆 Ты выиграл!</h1>
+            <p id="gameOverSub" style="color: rgba(255,255,255,0.6); margin-bottom: 20px;">Отличный результат, лава тебя не достала!</p>
+            <button class="action-btn ready-toggle-btn" onclick="window.location.reload()">В главное меню</button>
         </div>
     </div>
 

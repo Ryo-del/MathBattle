@@ -1,10 +1,14 @@
 document.addEventListener('DOMContentLoaded', () => {
-    // Получение Lobby ID из URL /Lava_Pillars/:id
     const pathSegments = window.location.pathname.split('/');
     const lobbyId = pathSegments[2] || '';
 
-    // Элементы DOM Ловби
+    // DOM Элементы
+    const countdownOverlay = document.getElementById('countdownOverlay');
+    const countdownNumber = document.getElementById('countdownNumber');
     const roomOverlay = document.getElementById('roomOverlay');
+    const gameOverOverlay = document.getElementById('gameOverOverlay');
+    const gameOverTitle = document.getElementById('gameOverTitle');
+    const gameOverSub = document.getElementById('gameOverSub');
     const gameArena = document.getElementById('gameArena');
     const lobbyCodeSpan = document.getElementById('lobbyCode');
     const playerCountSpan = document.getElementById('playerCount');
@@ -12,7 +16,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const readyBtn = document.getElementById('readyBtn');
     const startBtn = document.getElementById('startBtn');
 
-    // Элементы игры
     const pillarsContainer = document.getElementById('pillarsContainer');
     const quizContainer = document.getElementById('quizContainer');
     const quizQuestion = document.getElementById('quizQuestion');
@@ -21,7 +24,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const lavaOcean = document.getElementById('lavaOcean');
     const roundCounter = document.getElementById('roundCounter');
 
-    // Элементы ЧАТА
     const chatForm = document.getElementById('chatForm');
     const chatInput = document.getElementById('chatInput');
     const chatMessages = document.getElementById('chatMessages');
@@ -30,89 +32,81 @@ document.addEventListener('DOMContentLoaded', () => {
     let chatSocket = null;
     let localPlayers = [];
     let amIReady = false;
+    let myLogin = ""; // Сюда бэк закинет наш логин при room_update
 
-    // Включаем размытие фона арены при входе в лобби
+    let roundStartTime = 0;
+    let lastSelectedButton = null;
+
     gameArena.classList.add('blur-mode');
     lobbyCodeSpan.textContent = lobbyId;
 
-    // --- 1. ВЕБСОКЕТ КОМНАТЫ ИГРЫ ---
     function initGameWebSocket() {
         if (!lobbyId) return;
         const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-        
-        let wsUrl = '';
-        // Проверяем, зашел ли пользователь через быстрый поиск или по конкретному ID
-        if (lobbyId === 'quick') {
-            // ИСПРАВЛЕНО: Маршрут быстрого поиска через новую группу апи
-            wsUrl = `${protocol}//${window.location.host}/api/lavaPillars/quick`;
-        } else {
-            // ИСПРАВЛЕНО: Маршрут подключения к конкретной комнате /api/lavaPillars/join/:id
-            wsUrl = `${protocol}//${window.location.host}/api/lavaPillars/join/${lobbyId}`;
-        }
+        let wsUrl = lobbyId === 'quick' ? 
+            `${protocol}//${window.location.host}/api/lavaPillars/quick` : 
+            `${protocol}//${window.location.host}/api/lavaPillars/join/${lobbyId}`;
 
         gameSocket = new WebSocket(wsUrl);
 
         gameSocket.onmessage = (event) => {
-            try {
-                const msg = JSON.parse(event.data);
-                
-                // Обработка сообщения от сервера, если это ответ создания или обновления быстрой игры
-                if (msg.type === "room_created" && msg.lobby_id) {
-                    // Переписываем URL в строке браузера с quick на реальный ID комнаты, чтобы не сломать F5
-                    window.history.replaceState(null, '', `/Lava_Pillars/${msg.lobby_id}`);
-                    lobbyCodeSpan.textContent = msg.lobby_id;
-                }
-
-                if (msg.type === "room_update") {
-                    handleRoomUpdate(msg);
-                } else if (msg.type === "game_started") {
-                    handleGameStart();
-                } else if (msg.type === "error") {
-                    alert(msg.message);
-                }
-            } catch (err) {
-                console.error("Ошибка обработки пакета комнаты:", err);
-            }
-        };
-
-        gameSocket.onclose = () => {
-            console.warn("Соединение с комнатой закрыто. Повтор через 3 секунды...");
-            setTimeout(initGameWebSocket, 3000);
-        };
+    try {
+        const msg = JSON.parse(event.data);
+        
+        if (msg.type === "room_created" && msg.lobby_id) {
+            window.history.replaceState(null, '', `/Lava_Pillars/${msg.lobby_id}`);
+            lobbyCodeSpan.textContent = msg.lobby_id;
+        }
+        if (msg.type === "room_update") {
+            handleRoomUpdate(msg);
+        } else if (msg.type === "game_started") {
+            handleGameStart();
+        } else if (msg.type === "new_round") {
+            handleNewRound(msg);
+        } else if (msg.type === "round_result") {
+            handleRoundResult(msg);
+        } else if (msg.type === "win") { // <-- ЛОВИМ ПОБЕДУ
+            showGameOverWindow(true, msg.message || "Отличный результат, лава тебя не достала!");
+        } else if (msg.type === "lose") { // <-- ЛОВИМ ПРОИГРЫШ
+            showGameOverWindow(false, msg.message || "Твой столб поглотила лава!");
+        } else if (msg.type === "game_finished") {
+            console.log("Игра официально завершена на сервере");
+        } else if (msg.type === "error") {
+            alert(msg.message);
+        }
+    } catch (err) { console.error(err); }
+};
     }
+
+    window.addEventListener('beforeunload', () => {
+        if (gameSocket && gameSocket.readyState === WebSocket.OPEN) {
+            gameSocket.send(JSON.stringify({ type: "leave" }));
+        }
+    });
 
     function handleRoomUpdate(data) {
         localPlayers = data.players || [];
         playerCountSpan.textContent = `${localPlayers.length}/4`;
         playersList.innerHTML = '';
 
-        // По твоей логике, первый игрок в массиве - создатель (корона)
+        // Пытаемся определить, какой логин наш (например, тот, кто нажимает ready, или берем из сессии)
+        // Для теста: если мы еще не знаем себя, можно ориентироваться на первый запуск лобби
+        
         localPlayers.forEach((player, index) => {
             const isCreator = index === 0;
             const playerRow = document.createElement('div');
             playerRow.className = 'player-row';
-
             playerRow.innerHTML = `
                 <div class="player-info">
                     <span class="player-avatar">${escapeHTML(player.emoji || '👤')}</span>
-                    <a href="/profile/${escapeHTML(player.login)}" target="_blank" class="player-name-link">
-                        ${escapeHTML(player.login)} ${isCreator ? '👑' : ''}
-                    </a>
+                    <span class="player-name-link">${escapeHTML(player.login)} ${isCreator ? '👑' : ''}</span>
                 </div>
-                <span class="status-badge ${player.ready ? 'ready' : 'not-ready'}">
-                    ${player.ready ? 'Ready' : 'Not Ready'}
-                </span>
+                <span class="status-badge ${player.ready ? 'ready' : 'not-ready'}">${player.ready ? 'Ready' : 'Not Ready'}</span>
             `;
             playersList.appendChild(playerRow);
         });
 
-        // Кнопка СТАРТ доступна только создателю и когда все готовы
-        const iAmCreator = localPlayers[0] && localPlayers[0].login === document.getElementById('headerUsername')?.textContent; 
-        // Если аутентификация интегрирована, проверяем по логину, иначе даем первому в списке:
-        const isFirstSlotMe = true; // Для теста считаем, что первый игрок управляет
-
         const allReady = localPlayers.every(p => p.ready);
-
         if (allReady && localPlayers.length > 1) {
             startBtn.classList.remove('disabled');
             startBtn.disabled = false;
@@ -120,102 +114,174 @@ document.addEventListener('DOMContentLoaded', () => {
             startBtn.classList.add('disabled');
             startBtn.disabled = true;
         }
-
-        // Рендерим заготовки столбов на бэкграунде
         renderPillars();
     }
 
-    // Переключение Готовности
     readyBtn.addEventListener('click', () => {
         amIReady = !amIReady;
         readyBtn.textContent = amIReady ? "Статус: Готов" : "Статус: Не готов";
-        
-        gameSocket.send(JSON.stringify({
-            type: amIReady ? "ready" : "unready"
-        }));
+        gameSocket.send(JSON.stringify({ type: amIReady ? "ready" : "unready" }));
     });
 
-    // Запуск игры создателем
     startBtn.addEventListener('click', () => {
         gameSocket.send(JSON.stringify({ type: "start" }));
     });
 
-    function handleGameStart() {
-        roomOverlay.style.display = 'none';
+   function handleGameStart() {
+        roomOverlay.style.display = 'none'; // Закрываем окно лобби
         gameArena.classList.remove('blur-mode');
-        quizContainer.classList.add('active');
-        // Запуск таймера раунда
-        startLocalTimer(15, 0);
+        
+        // Включаем оверлей отсчета
+        countdownOverlay.style.display = 'flex';
+        let count = 3;
+        countdownNumber.textContent = count;
+
+        const interval = setInterval(() => {
+            count--;
+            if (count > 0) {
+                countdownNumber.textContent = count;
+            } else if (count === 0) {
+                countdownNumber.textContent = "ПОГНАЛИ!";
+            } else {
+                clearInterval(interval);
+                countdownOverlay.style.display = 'none'; // Прячем отсчет
+                quizContainer.classList.add('active');   // Показываем интерфейс вопросов
+            }
+        }, 1000);
     }
 
-    // Отрисовка столбов
+    function handleNewRound(msg) {
+        // 1. Сразу блокируем сетку и пишем промежуточный текст, разделяя раунды
+        answersGrid.classList.add('loading');
+        quizQuestion.textContent = "Приготовьтесь, загрузка следующего вопроса...";
+        
+        // Очищаем старые кнопки, чтобы они не путали игрока во время паузы
+        answersGrid.innerHTML = ''; 
+
+        // 2. Делаем паузу в 3 секунды перед показом самого вопроса
+        setTimeout(() => {
+            answersGrid.classList.remove('loading');
+            
+            roundCounter.textContent = `Раунд: ${msg.round}`;
+            quizQuestion.textContent = msg.question.text;
+            lastSelectedButton = null;
+
+            msg.question.variants.forEach((variant, index) => {
+                const btn = document.createElement('button');
+                btn.className = 'answer-btn';
+                btn.textContent = variant;
+                btn.dataset.index = index;
+                btn.onclick = () => handleSelectAnswer(btn, index);
+                answersGrid.appendChild(btn);
+            });
+
+            roundStartTime = Date.now();
+            startLocalTimer(15, 0); // Запускаем таймер только после фактического появления вопроса!
+        }, 3000); // 3 секунды паузы между раундами
+    }
+
+    function handleSelectAnswer(button, variantIndex) {
+        stopLocalTimer();
+        const timeSpentMs = Date.now() - roundStartTime;
+
+        // Визуально подсвечиваем, что ответ принят к рассмотрению
+        document.querySelectorAll('.answer-btn').forEach(btn => btn.disabled = true);
+        button.classList.add('selected');
+        lastSelectedButton = button;
+
+        gameSocket.send(JSON.stringify({
+            type: "answer",
+            answer: variantIndex,
+            time_ms: timeSpentMs 
+        }));
+    }
+
+
+    function handleRoundResult(msg) {
+    // ВАЖНО: твой бэк шлет "Correct_answer" с большой буквы C!
+    const correctIdx = msg.Correct_answer; 
+
+    // Проходимся по кнопкам и красим их
+    document.querySelectorAll('.answer-btn').forEach(btn => {
+        const idx = parseInt(btn.dataset.index);
+        
+        if (idx === correctIdx) {
+            // Красим правильный ответ в зеленый (неважно, выбрали его или нет)
+            btn.classList.remove('selected');
+            btn.classList.add('correct'); 
+        } else if (btn.classList.contains('selected')) {
+            // Если игрок выбрал эту кнопку, но она не правильная — красим в красный
+            btn.classList.remove('selected');
+            btn.classList.add('wrong'); 
+        }
+    });
+
+    // Обновляем высоту лавы
+    if (msg.lava_height) {
+        // Умножаем на 50 для высоты в пикселях на арене
+        lavaOcean.style.height = `${msg.lava_height * 50}px`; 
+    }
+    
+    // Обновляем высоту столбов игроков
+    if (msg.players) {
+        msg.players.forEach(p => {
+            const bodyEl = document.getElementById(`body-${p.login}`);
+            if (bodyEl) {
+                bodyEl.style.height = `${p.height * 50}px`;
+                bodyEl.textContent = Math.round(p.height);
+            }
+
+            // Если наш столб ушел под лаву — фиксируем проигрыш
+            if (p.login === myLogin && !p.alive) {
+                showGameOverWindow(false, "Твой столб поглотила лава!");
+            }
+        });
+    }
+}
+
+    function handleGameOver(msg) {
+        // Проверяем, победили мы или проиграли по итогу всей игры
+        if (msg.winner === myLogin) {
+            showGameOverWindow(true, "Ты выжил и победил всех соперников!");
+        } else {
+            showGameOverWindow(false, `Победил игрок ${msg.winner}`);
+        }
+    }
+
+    function showGameOverWindow(isWin, text) {
+        quizContainer.classList.remove('active');
+        gameArena.classList.add('blur-mode');
+        gameOverOverlay.style.display = 'flex';
+        if (isWin) {
+            gameOverTitle.textContent = "🏆 Ты выиграл!";
+            gameOverSub.textContent = text;
+        } else {
+            gameOverTitle.textContent = "💀 Ты проиграл!";
+            gameOverSub.textContent = text;
+            gameOverTitle.style.color = "#ff3b30";
+        }
+    }
+
     function renderPillars() {
         pillarsContainer.innerHTML = '';
         localPlayers.forEach(player => {
             const wrapper = document.createElement('div');
             wrapper.className = 'pillar-wrapper';
             wrapper.id = `pillar-${player.login}`;
-
             wrapper.innerHTML = `
                 <span class="player-tag">${escapeHTML(player.login)}</span>
                 <div class="player-token" id="token-${player.login}">${escapeHTML(player.emoji || '🔥')}</div>
-                <div class="pillar-body" id="body-${player.login}" style="height: 100px;">0</div>
+                <div class="pillar-body" id="body-${player.login}" style="height: 150px;">3</div>
             `;
             pillarsContainer.appendChild(wrapper);
         });
     }
 
-    // --- 2. ПОДКЛЮЧЕНИЕ ОБЩЕГО ЧАТА ---
-    async function initChat() {
-        // Загрузка истории
-        try {
-            const res = await fetch('/api/chat/history');
-            if (res.ok) {
-                const history = await res.json();
-                history.reverse().forEach(msg => appendChatMessage(msg));
-            }
-        } catch(e) { console.error("Чат недоступен", e); }
-
-        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-        chatSocket = new WebSocket(`${protocol}//${window.location.host}/api/chat/ws`);
-
-        chatSocket.onmessage = (event) => {
-            try {
-                const msg = JSON.parse(event.data);
-                appendChatMessage(msg);
-            } catch(e){}
-        };
-    }
-
-    function appendChatMessage(message) {
-        const div = document.createElement('div');
-        const safeText = escapeHTML(message.text);
-        const safeLogin = escapeHTML(message.login);
-        const safeEmoji = escapeHTML(message.emoji || '💬');
-
-        div.innerHTML = `
-            <a href="/profile/${safeLogin}" target="_blank" class="chat-author-link">
-                <strong>${safeEmoji} ${safeLogin}:</strong>
-            </a> <span>${safeText}</span>
-        `;
-        chatMessages.appendChild(div);
-        chatMessages.scrollTop = chatMessages.scrollHeight;
-    }
-
-    chatForm.addEventListener('submit', (e) => {
-        e.preventDefault();
-        const txt = chatInput.value.trim();
-        if(!txt || !chatSocket) return;
-        chatSocket.send(txt);
-        chatInput.value = '';
-    });
-
-    // --- 3. ТАЙМЕР ИГРЫ (Милисекунды) ---
+    // --- ЧАТ И ТАЙМЕР ОСТАЛИСЬ БЕЗ ИЗМЕНЕНИЙ ---
     let timerInterval = null;
     function startLocalTimer(sec, ms) {
         clearInterval(timerInterval);
         let totalMs = (sec * 1000) + ms;
-        
         timerInterval = setInterval(() => {
             if (totalMs <= 0) {
                 clearInterval(timerInterval);
@@ -225,86 +291,34 @@ document.addEventListener('DOMContentLoaded', () => {
             totalMs -= 10;
             let displaySec = Math.floor(totalMs / 1000);
             let displayMs = Math.floor((totalMs % 1000) / 10);
-            
-            quizTimer.textContent = 
-                `${displaySec.toString().padStart(2, '0')}:${displayMs.toString().padStart(2, '0')}`;
+            quizTimer.textContent = `${displaySec.toString().padStart(2, '0')}:${displayMs.toString().padStart(2, '0')}`;
         }, 10);
     }
-
-    function stopLocalTimer() {
-        clearInterval(timerInterval);
+    function stopLocalTimer() { clearInterval(timerInterval); }
+    async function initChat() {
+        try {
+            const res = await fetch('/api/chat/history');
+            if (res.ok) {
+                const history = await res.json();
+                history.reverse().forEach(msg => appendChatMessage(msg));
+            }
+        } catch(e) {}
+        chatSocket = new WebSocket(`${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}/api/chat/ws`);
+        chatSocket.onmessage = (e) => { try{ appendChatMessage(JSON.parse(e.data)); }catch(err){} };
     }
-
-    // Инициализация систем
+    function appendChatMessage(message) {
+        const div = document.createElement('div');
+        div.innerHTML = `<a href="/profile/${escapeHTML(message.login)}" target="_blank" class="chat-author-link"><strong>${escapeHTML(message.emoji || '💬')} ${escapeHTML(message.login)}:</strong></a> <span>${escapeHTML(message.text)}</span>`;
+        chatMessages.appendChild(div);
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+    }
+    chatForm.addEventListener('submit', (e) => {
+        e.preventDefault();
+        if(!chatInput.value.trim() || !chatSocket) return;
+        chatSocket.send(chatInput.value.trim());
+        chatInput.value = '';
+    });
     initGameWebSocket();
     initChat();
-
-    // Экспонируем функции панели админа в глобальную область видимости
-    window.adminSimulateQuestion = () => {
-        handleGameStart(); // Закрываем лобби, если оно открыто
-        quizQuestion.textContent = "Вычислите производную функции f(x) = 3x² + 5x в точке x = 2";
-        answersGrid.innerHTML = '';
-        
-        const answers = ["12", "17 (Правильный)", "11", "20"];
-        answers.forEach((ans, index) => {
-            const btn = document.createElement('button');
-            btn.className = 'answer-btn';
-            btn.textContent = ans;
-            btn.onclick = () => {
-                stopLocalTimer();
-                // Подсветка ответов
-                document.querySelectorAll('.answer-btn').forEach((b, i) => {
-                    if (i === 1) b.classList.add('correct');
-                    else if (i === index) b.classList.add('wrong');
-                });
-            };
-            answersGrid.appendChild(btn);
-        });
-        startLocalTimer(15, 0);
-    };
-
-    window.adminPlayerAnswer = (isCorrect) => {
-        if (localPlayers.length === 0) {
-            alert("В комнате нет игроков! Зайди в игру во вкладках браузера.");
-            return;
-        }
-        // Берем первого игрока для демонстрации анимации подпрыгивания
-        const targetUser = localPlayers[0].login;
-        const bodyEl = document.getElementById(`body-${targetUser}`);
-        const tokenEl = document.getElementById(`token-${targetUser}`);
-
-        if (bodyEl && isCorrect) {
-            let currentPoints = parseInt(bodyEl.textContent) || 0;
-            currentPoints += 1;
-            bodyEl.textContent = currentPoints;
-            
-            // Увеличиваем высоту столба
-            let currentHeight = parseInt(bodyEl.style.height);
-            bodyEl.style.height = `${currentHeight + 40}px`;
-
-            // Забавный прыжок аватарки
-            tokenEl.classList.add('jump');
-            tokenEl.addEventListener('animationend', () => {
-                tokenEl.classList.remove('jump');
-            }, { once: true });
-        }
-    };
-
-    window.adminRaiseLava = () => {
-        let currentLavaHeight = parseInt(window.getComputedStyle(lavaOcean).height) || 80;
-        lavaOcean.style.height = `${currentLavaHeight + 50}px`;
-    };
-
-    window.adminNextRound = () => {
-        let text = roundCounter.textContent;
-        let roundNum = parseInt(text.replace(/\D/g, '')) || 1;
-        roundCounter.textContent = `Раунд: ${roundNum + 1}`;
-        window.adminSimulateQuestion();
-    };
-
-    function escapeHTML(str) {
-        return str.replace(/[&<>'"]/g, 
-            tag => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[tag] || tag)
-        );
-    }
+    function escapeHTML(str) { return str.replace(/[&<>'"]/g, t => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[t] || t)); }
 });

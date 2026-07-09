@@ -2,15 +2,15 @@ package user
 
 import (
 	"log/slog"
+	repo "mathbattle/repo"
 	"net/http"
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 type Handler struct {
-	DB *pgxpool.Pool
+	repo repo.Repository
 }
 
 type Profile struct {
@@ -24,32 +24,24 @@ type Profile struct {
 	CreatedAt        time.Time `json:"created_at"`
 }
 
+func NewHandler(repo *repo.Repository) *Handler {
+	return &Handler{
+		repo: *repo,
+	}
+}
 func (h *Handler) GetProfileByLogin(c *gin.Context) {
 	login := c.Param("login")
-
-	var profile Profile
-	err := h.DB.QueryRow(
-		c.Request.Context(),
-		`
-		SELECT login, emoji, email, lava_pillars_games, lava_pillars_wins, formula_wars_games, formula_wars_wins, created_at
-		FROM users
-		WHERE login = $1
-		`,
-		login,
-	).Scan(&profile.Login, &profile.Emoji, &profile.Email, &profile.LavaPillarsGames, &profile.LavaPillarsWins, &profile.FormulaWarsGames, &profile.FormulaWarsWins, &profile.CreatedAt)
-
+	profile, err := h.repo.GetFullProfile(login)
 	if err != nil {
 		slog.Error("db error", "err", err)
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": "internal server error",
-		})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal server error"})
 		return
 	}
-
 	c.JSON(http.StatusOK, profile)
 }
 
 func (h *Handler) GetShortProfile(c *gin.Context) {
+
 	userIDAny, exists := c.Get("user_id")
 	if !exists {
 		c.JSON(http.StatusUnauthorized, gin.H{
@@ -62,16 +54,7 @@ func (h *Handler) GetShortProfile(c *gin.Context) {
 
 	var login, emoji string
 
-	err := h.DB.QueryRow(
-		c.Request.Context(),
-		`
-		SELECT login, emoji
-		FROM users
-		WHERE id = $1
-		`,
-		userID,
-	).Scan(&login, &emoji)
-
+	login, emoji, err := h.repo.GetShortProfile(userID)
 	if err != nil {
 		slog.Error("db error", "err", err)
 

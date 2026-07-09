@@ -11,6 +11,7 @@ import (
 	"mathbattle/chat"
 	Pillars "mathbattle/game/Lava_Pillars"
 	"mathbattle/middleware"
+	"mathbattle/repo"
 	"mathbattle/user"
 
 	"github.com/gin-contrib/cors"
@@ -93,26 +94,14 @@ func main() {
 		return
 	}
 	defer pool.Close()
+	repository := repo.NewRepository(pool)
 
-	authHandler := &auth.Handler{
-		DB:        pool,
-		JwtSecret: JWTkey,
-	}
-	userHandler := &user.Handler{
-		DB: pool,
-	}
-	mw := &middleware.Middleware{
-		JwtSecret: JWTkey,
-	}
-	chatHandler := &chat.Handler{
-		DB: pool,
-	}
 	roomManager := Pillars.NewRoomManager()
 
-	pillarsHandler := &Pillars.Handler{
-		DB:      pool,
-		Manager: roomManager,
-	}
+	authHandler := auth.NewHandler(repository, JWTkey)
+	userHandler := user.NewHandler(repository)
+	chatHandler := chat.NewHandler(repository)
+	pillarsHandler := Pillars.NewHandler(repository, roomManager)
 	router := gin.Default()
 	config := cors.DefaultConfig()
 	config.AllowOrigins = []string{"http://localhost:8080", "http://127.0.0.1:8080"} // Укажи порты, на которых запускаешь сайт
@@ -146,6 +135,9 @@ func main() {
 	userGroup := api.Group("/user")
 	chatGroup := api.Group("/chat")
 	lavaPillarsGroup := api.Group("/lavaPillars")
+	mw := &middleware.Middleware{
+		JwtSecret: JWTkey,
+	}
 	userGroup.Use(mw.AuthMiddleware())
 	lavaPillarsGroup.Use(mw.AuthMiddleware())
 	chatGroup.Use(mw.AuthMiddleware())

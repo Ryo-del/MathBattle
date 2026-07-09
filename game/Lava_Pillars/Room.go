@@ -2,24 +2,18 @@ package Pillars
 
 import (
 	"crypto/rand"
-	"encoding/json"
 	"errors"
 	"log/slog"
+	"mathbattle/repo"
 	"net/http"
 	"sync"
 
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
-	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-type Message struct {
-	Type string          `json:"type"`
-	Data json.RawMessage `json:"data"`
-}
-
 type Handler struct {
-	DB      *pgxpool.Pool
+	repo    repo.Repository
 	Manager *RoomManager
 }
 type RoomManager struct {
@@ -43,6 +37,7 @@ type Room struct {
 	State      RoomState
 	LobbyID    string
 	MaxPlayers int
+	Game       *Game
 }
 
 type Player struct {
@@ -75,6 +70,12 @@ var upgrader = websocket.Upgrader{
 	},
 }
 
+func NewHandler(repo *repo.Repository, manager *RoomManager) *Handler {
+	return &Handler{
+		repo:    *repo,
+		Manager: manager,
+	}
+}
 func (h *Handler) CurrentPlayer(c *gin.Context, conn *websocket.Conn) (*Player, error) {
 	userIDAny, exists := c.Get("user_id")
 	if !exists {
@@ -83,18 +84,7 @@ func (h *Handler) CurrentPlayer(c *gin.Context, conn *websocket.Conn) (*Player, 
 
 	userID := userIDAny.(int64)
 
-	var login, emoji string
-
-	err := h.DB.QueryRow(
-		c.Request.Context(),
-		`
-		SELECT login, emoji
-		FROM users
-		WHERE id = $1
-		`,
-		userID,
-	).Scan(&login, &emoji)
-
+	login, emoji, err := h.repo.GetShortProfile(userID)
 	if err != nil {
 		return nil, err
 	}
@@ -210,12 +200,6 @@ func (h *Handler) CreateLobby(c *gin.Context) {
 			break
 		}
 		h.HandleMessage(room, Player, msg)
-		room.Broadcast(gin.H{
-			"type": "game_started",
-			"data": gin.H{
-				"lobby_id": room.LobbyID,
-			},
-		})
 
 	}
 }
@@ -303,12 +287,6 @@ func (h *Handler) JoinRoom(c *gin.Context) {
 			break
 		}
 		h.HandleMessage(room, Player, msg)
-		room.Broadcast(gin.H{
-			"type": "game_started",
-			"data": gin.H{
-				"lobby_id": room.LobbyID,
-			},
-		})
 
 	}
 }
@@ -368,12 +346,6 @@ func (h *Handler) JoinRandomRoom(c *gin.Context) {
 			break
 		}
 		h.HandleMessage(room, Player, msg)
-		room.Broadcast(gin.H{
-			"type": "game_started",
-			"data": gin.H{
-				"lobby_id": room.LobbyID,
-			},
-		})
 
 	}
 
@@ -435,15 +407,33 @@ func (h *Handler) HandleMessage(room *Room, player *Player, msg Message) {
 				})
 				return
 			}
-			room.State = Playing
-
-			NewGame(room) // пока просто создаем
-
-			room.Broadcast(gin.H{
-				"type": "game_started",
-			})
 
 		}
 
+		room.State = Playing
+		room.Broadcast(GameStartedMessage{
+			Type: "game_started",
+		})
+		room.Game = NewGame(room, &h.repo)
+	case "answer":
+		gp := IsPlayerAlive(room, player)
+		if gp == nil {
+			return
+		}
+		gp.Answered = true
+		gp.Answer = msg.Answer
+		if room.Game.HasEveryoneAnswered() {
+			room.Game.CalculateResult()
+		}
+	case "timeout":
+		gp := IsPlayerAlive(room, player)
+		if gp == nil {
+			return
+		}
+		gp.Answered = true
+		gp.Answer = NoAnswer
+		if room.Game.HasEveryoneAnswered() {
+			room.Game.CalculateResult()
+		}
 	}
 }
