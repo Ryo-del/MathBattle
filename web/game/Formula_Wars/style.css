@@ -1,0 +1,159 @@
+:root {
+    --bg-light: #f5f5f7;
+    --panel-bg: rgba(255, 255, 255, 0.85);
+    --accent-color: #0071e3; /* Синий Apple */
+    --accent-success: #34c759;
+    --accent-danger: #ff3b30;
+    --text-main: #1d1d1f;
+    --text-muted: #8e8e93;
+    --border-color: rgba(0, 0, 0, 0.08);
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    background-color: var(--bg-light);
+    color: var(--text-main);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    overflow: hidden;
+    height: 100vh;
+}
+
+/* Верхняя шапка */
+.game-header {
+    height: 60px;
+    background: var(--panel-bg);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border-bottom: 1px solid var(--border-color);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0 30px;
+}
+.game-header .logo { font-size: 18px; font-weight: 600; color: var(--text-main); }
+.round-counter { background: rgba(0,0,0,0.05); padding: 6px 14px; border-radius: 20px; font-size: 14px; font-weight: 500; }
+
+/* Сетка основного контента */
+.game-content-layout {
+    display: flex;
+    height: calc(100vh - 60px);
+    width: 100vw;
+}
+
+/* Центральная зона: Холст + Ввод снизу */
+.center-game-zone {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: space-between;
+    padding: 20px;
+    background: #ffffff;
+}
+
+.canvas-container {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+}
+
+#battleCanvas {
+    background: #ffffff;
+    border: 1px solid var(--border-color);
+    border-radius: 16px;
+    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.04);
+    max-height: 65vh;
+    max-width: 100%;
+    aspect-ratio: 1 / 1;
+}
+
+/* Нижняя большая панель формул */
+.formula-panel-bottom {
+    width: 100%;
+    max-width: 700px;
+    background: var(--bg-light);
+    border: 1px solid var(--border-color);
+    border-radius: 18px;
+    padding: 20px;
+    margin-top: 15px;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.02);
+}
+.formula-header-info h3 { font-size: 16px; font-weight: 600; margin-bottom: 4px; }
+.formula-tip { font-size: 13px; color: var(--text-muted); margin-bottom: 12px; }
+
+.formula-input-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: #ffffff;
+    border: 1px solid rgba(0,0,0,0.15);
+    border-radius: 12px;
+    padding: 6px 12px;
+}
+.f-fx { font-weight: 600; color: var(--text-main); font-size: 16px; }
+#formulaInput {
+    flex: 1;
+    background: transparent;
+    border: none;
+    font-size: 16px;
+    color: var(--text-main);
+    outline: none;
+}
+#formulaInput:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* Правый сайдбар под чат */
+.sidebar-right {
+    width: 320px;
+    background: var(--bg-light);
+    border-left: 1px solid var(--border-color);
+    display: flex;
+    flex-direction: column;
+}
+.chat-container { display: flex; flex-direction: column; height: 100%; }
+.chat-header-title { padding: 15px 20px; font-weight: 600; border-bottom: 1px solid var(--border-color); }
+.chat-messages { flex: 1; padding: 15px; overflow-y: auto; background: #ffffff; font-size: 14px; }
+.chat-form { display: flex; border-top: 1px solid var(--border-color); background: #ffffff; }
+.chat-form input { flex: 1; border: none; padding: 16px; outline: none; font-size: 14px; }
+.chat-form button { background: transparent; border: none; color: var(--accent-color); font-size: 18px; padding: 0 20px; cursor: pointer; }
+
+/* Кнопки */
+.btn {
+    padding: 10px 20px;
+    border-radius: 10px;
+    border: none;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+.btn-primary { background: var(--accent-color); color: #fff; }
+.btn-primary:hover { background: #0062c3; }
+.btn-primary:disabled { background: var(--text-muted); opacity: 0.6; cursor: not-allowed; }
+
+/* Оверлей Лобби */
+.room-overlay {
+    position: fixed;
+    top: 0; left: 0; width: 100vw; height: 100vh;
+    background: rgba(245, 245, 247, 0.85);
+    backdrop-filter: blur(15px);
+    -webkit-backdrop-filter: blur(15px);
+    display: flex; justify-content: center; align-items: center; z-index: 100;
+}
+.lobby-container {
+    background: #ffffff;
+    border: 1px solid var(--border-color);
+    border-radius: 24px;
+    padding: 30px;
+    width: 400px;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.06);
+    text-align: center;
+}
+.players-list { margin: 20px 0; text-align: left; background: var(--bg-light); padding: 10px; border-radius: 12px; }
+.player-item { padding: 8px; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; }
+.player-item:last-child { border: none; }

@@ -9,6 +9,7 @@ import (
 
 	auth "mathbattle/auth"
 	"mathbattle/chat"
+	Formula "mathbattle/game/Formula_Wars"
 	Pillars "mathbattle/game/Lava_Pillars"
 	"mathbattle/middleware"
 	"mathbattle/repo"
@@ -96,12 +97,14 @@ func main() {
 	defer pool.Close()
 	repository := repo.NewRepository(pool)
 
-	roomManager := Pillars.NewRoomManager()
+	PillarsroomManager := Pillars.NewRoomManager()
+	FormularoomManager := Formula.NewRoomManager()
 
 	authHandler := auth.NewHandler(repository, JWTkey)
 	userHandler := user.NewHandler(repository)
 	chatHandler := chat.NewHandler(repository)
-	pillarsHandler := Pillars.NewHandler(repository, roomManager)
+	pillarsHandler := Pillars.NewHandler(repository, PillarsroomManager)
+	FormulaHandler := Formula.NewHandler(repository, FormularoomManager)
 	router := gin.Default()
 	config := cors.DefaultConfig()
 	config.AllowOrigins = []string{"http://localhost:8080", "http://127.0.0.1:8080"} // Укажи порты, на которых запускаешь сайт
@@ -129,18 +132,25 @@ func main() {
 	router.GET("/Lava_Pillars/:id", func(c *gin.Context) {
 		c.File("./web/game/Lava_Pillars/index.html")
 	})
+	//Formula Wars
+	router.Static("/Formula_Wars-assets", "./web/game/Formula_Wars/")
+	router.GET("/Formula_Wars/:id", func(c *gin.Context) {
+		c.File("./web/game/Formula_Wars/index.html")
+	})
 	router.Static("/static", "./web/static")
 	api := router.Group("/api")
 	authGroup := api.Group("/auth")
 	userGroup := api.Group("/user")
 	chatGroup := api.Group("/chat")
 	lavaPillarsGroup := api.Group("/lavaPillars")
+	formulaWarsGroup := api.Group("/formulaWars")
 	mw := &middleware.Middleware{
 		JwtSecret: JWTkey,
 	}
 	userGroup.Use(mw.AuthMiddleware())
 	lavaPillarsGroup.Use(mw.AuthMiddleware())
 	chatGroup.Use(mw.AuthMiddleware())
+	formulaWarsGroup.Use(mw.AuthMiddleware())
 	hub := chat.NewHub()
 
 	go hub.Run() // Запуск хаба в отдельной горутине
@@ -149,6 +159,8 @@ func main() {
 	auth.RegisterRoutes(authGroup, authHandler)
 	user.RegisterRoutes(userGroup, userHandler)
 	Pillars.RegisterRouters(lavaPillarsGroup, pillarsHandler)
+	Formula.RegisterRouters(formulaWarsGroup, FormulaHandler)
+
 	slog.Info("Starting server on :8080")
 	err = router.Run(":8080")
 	if err != nil {

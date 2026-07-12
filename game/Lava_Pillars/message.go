@@ -8,6 +8,7 @@ type GameStartedMessage struct {
 type Message struct {
 	Answer int
 	Type   string          `json:"type"`
+	Pack   int             `json:"pack"`
 	Data   json.RawMessage `json:"data"`
 }
 type NewRoundMessage struct {

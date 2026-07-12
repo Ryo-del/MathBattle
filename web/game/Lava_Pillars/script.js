@@ -1,7 +1,7 @@
 document.addEventListener('DOMContentLoaded', () => {
     const pathSegments = window.location.pathname.split('/');
     const lobbyId = pathSegments[2] || '';
-
+    const gameModeSelector = document.getElementById('gameModeSelector');
     // DOM Элементы
     const countdownOverlay = document.getElementById('countdownOverlay');
     const countdownNumber = document.getElementById('countdownNumber');
@@ -85,37 +85,47 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     function handleRoomUpdate(data) {
-        localPlayers = data.players || [];
-        playerCountSpan.textContent = `${localPlayers.length}/4`;
-        playersList.innerHTML = '';
+    localPlayers = data.players || [];
+    playerCountSpan.textContent = `${localPlayers.length}/4`;
+    playersList.innerHTML = '';
 
-        // Пытаемся определить, какой логин наш (например, тот, кто нажимает ready, или берем из сессии)
-        // Для теста: если мы еще не знаем себя, можно ориентироваться на первый запуск лобби
-        
-        localPlayers.forEach((player, index) => {
-            const isCreator = index === 0;
-            const playerRow = document.createElement('div');
-            playerRow.className = 'player-row';
-            playerRow.innerHTML = `
-                <div class="player-info">
-                    <span class="player-avatar">${escapeHTML(player.emoji || '👤')}</span>
-                    <span class="player-name-link">${escapeHTML(player.login)} ${isCreator ? '👑' : ''}</span>
-                </div>
-                <span class="status-badge ${player.ready ? 'ready' : 'not-ready'}">${player.ready ? 'Ready' : 'Not Ready'}</span>
-            `;
-            playersList.appendChild(playerRow);
-        });
+    localPlayers.forEach((player, index) => {
+        const isCreator = index === 0;
+        const playerRow = document.createElement('div');
+        playerRow.className = 'player-row';
+        playerRow.innerHTML = `
+            <div class="player-info">
+                <span class="player-avatar">${escapeHTML(player.emoji || '👤')}</span>
+                <span class="player-name-link">${escapeHTML(player.login)} ${isCreator ? '👑' : ''}</span>
+            </div>
+            <span class="status-badge ${player.ready ? 'ready' : 'not-ready'}">${player.ready ? 'Ready' : 'Not Ready'}</span>
+        `;
+        playersList.appendChild(playerRow);
+    });
 
-        const allReady = localPlayers.every(p => p.ready);
-        if (allReady && localPlayers.length > 1) {
-            startBtn.classList.remove('disabled');
-            startBtn.disabled = false;
-        } else {
-            startBtn.classList.add('disabled');
-            startBtn.disabled = true;
+    // СИНХРОНИЗАЦИЯ РЕЖИМА ИГРЫ
+    if (data.pack) {
+        const radioToSelect = document.querySelector(`input[name="gamePack"][value="${data.pack}"]`);
+        if (radioToSelect) {
+            radioToSelect.checked = true;
         }
-        renderPillars();
     }
+
+    const gameModeSelector = document.getElementById('gameModeSelector');
+    if (gameModeSelector) {
+        gameModeSelector.style.pointerEvents = 'auto'; 
+    }
+
+    const allReady = localPlayers.every(p => p.ready);
+    if (allReady && localPlayers.length > 1) {
+        startBtn.classList.remove('disabled');
+        startBtn.disabled = false;
+    } else {
+        startBtn.classList.add('disabled');
+        startBtn.disabled = true;
+    }
+    renderPillars();
+}
 
     readyBtn.addEventListener('click', () => {
         amIReady = !amIReady;
@@ -123,9 +133,21 @@ document.addEventListener('DOMContentLoaded', () => {
         gameSocket.send(JSON.stringify({ type: amIReady ? "ready" : "unready" }));
     });
 
-    startBtn.addEventListener('click', () => {
-        gameSocket.send(JSON.stringify({ type: "start" }));
+   startBtn.addEventListener('click', () => {
+    gameSocket.send(JSON.stringify({ type: "start" }));
+});
+document.querySelectorAll('input[name="gamePack"]').forEach(radio => {
+    radio.addEventListener('change', (e) => {
+        // Отправляем на бэк информацию, что пак изменился
+        if (gameSocket && gameSocket.readyState === WebSocket.OPEN) {
+            gameSocket.send(JSON.stringify({
+                type: "select_pack",
+                pack: parseInt(e.target.value)
+            }));
+        }
     });
+});
+
 
    function handleGameStart() {
         roomOverlay.style.display = 'none'; // Закрываем окно лобби
@@ -197,7 +219,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
 
-    function handleRoundResult(msg) {
+function handleRoundResult(msg) {
     // ВАЖНО: твой бэк шлет "Correct_answer" с большой буквы C!
     const correctIdx = msg.Correct_answer; 
 
@@ -206,32 +228,40 @@ document.addEventListener('DOMContentLoaded', () => {
         const idx = parseInt(btn.dataset.index);
         
         if (idx === correctIdx) {
-            // Красим правильный ответ в зеленый (неважно, выбрали его или нет)
             btn.classList.remove('selected');
             btn.classList.add('correct'); 
         } else if (btn.classList.contains('selected')) {
-            // Если игрок выбрал эту кнопку, но она не правильная — красим в красный
             btn.classList.remove('selected');
             btn.classList.add('wrong'); 
         }
     });
 
-    // Обновляем высоту лавы
+    // --- ЛОГИКА СДВИГА КАМЕРЫ НА ФРОНТЕНДЕ ---
+    // Каждые 10 раундов мы виртуально опускаем всё вниз на 5 единиц (5 * 50px = 250px)
+    // Вычисляем, сколько раз по 10 раундов уже прошло
+    const cameraShiftsCount = Math.floor((msg.round - 1) / 8); 
+    const visualShift = cameraShiftsCount * 7; // Смещение в игровых единицах
+
+    // Обновляем высоту лавы с учетом смещения
     if (msg.lava_height) {
-        // Умножаем на 50 для высоты в пикселях на арене
-        lavaOcean.style.height = `${msg.lava_height * 50}px`; 
+        // Вычитаем смещение, но не даем лаве визуально упасть ниже 1 единицы
+        const visualLavaHeight = Math.max(1, msg.lava_height - visualShift);
+        lavaOcean.style.height = `${visualLavaHeight * 50}px`; 
     }
     
-    // Обновляем высоту столбов игроков
+    // Обновляем высоту столбов игроков с учетом смещения
     if (msg.players) {
         msg.players.forEach(p => {
             const bodyEl = document.getElementById(`body-${p.login}`);
             if (bodyEl) {
-                bodyEl.style.height = `${p.height * 50}px`;
+                // Вычитаем смещение, но не даем столбу визуально стать меньше 0
+                const visualPlayerHeight = Math.max(0, p.height - visualShift);
+                bodyEl.style.height = `${visualPlayerHeight * 50}px`;
+                
+                // Текст на столбе оставляем реальным (округленным), чтобы игроки видели свой настоящий прогресс
                 bodyEl.textContent = Math.round(p.height);
             }
 
-            // Если наш столб ушел под лаву — фиксируем проигрыш
             if (p.login === myLogin && !p.alive) {
                 showGameOverWindow(false, "Твой столб поглотила лава!");
             }

@@ -9,7 +9,8 @@ import (
 )
 
 type Interface interface {
-	AddResultToProfile(userID int64, win bool) error
+	AddResultToProfilePillars(userID int64, win bool) error
+	AddResultToProfileFormula(userID int64, win bool) error
 	GetShortProfile(userID int64) (string, string, error)
 	GetFullProfile(login string) (*Profile, error)
 	SaveHistoryMessage(userID int64, emoji string, login string, text string) error
@@ -119,7 +120,7 @@ func (r *Repository) GetShortProfile(userID int64) (string, string, error) {
 	return login, emoji, nil
 }
 
-func (r *Repository) AddResultToProfile(userID int64, win bool) error {
+func (r *Repository) AddResultToProfilePillars(userID int64, win bool) error {
 	query := `
 		UPDATE users
 		SET lava_pillars_games = lava_pillars_games + 1
@@ -138,5 +139,25 @@ func (r *Repository) AddResultToProfile(userID int64, win bool) error {
 
 	_, err := r.DB.Exec(context.Background(), query, userID)
 
+	return err
+}
+func (r *Repository) AddResultToProfileFormula(userID int64, win bool) error {
+	query := `
+		UPDATE users
+		SET formula_wars_games = formula_wars_games + 1
+		WHERE id = $1
+	`
+
+	if win {
+		query = `
+			UPDATE users
+			SET
+				formula_wars_games = formula_wars_games + 1,
+				formula_wars_wins  = formula_wars_wins + 1
+			WHERE id = $1
+		`
+	}
+
+	_, err := r.DB.Exec(context.Background(), query, userID)
 	return err
 }

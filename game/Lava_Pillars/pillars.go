@@ -43,8 +43,8 @@ type Question struct {
 
 const NoAnswer = -1
 
-func NewGame(room *Room, repo repo.Interface) *Game {
-	questions, err := LoadQuestions()
+func NewGame(room *Room, repo repo.Interface, pack int) *Game {
+	questions, err := LoadQuestions(pack)
 	if err != nil {
 		slog.Error("Error with load question", "error", err)
 		return nil
@@ -87,8 +87,14 @@ func (g *Game) NewRound() {
 	})
 
 }
-func LoadQuestions() ([]Question, error) {
-	data, err := os.ReadFile("game/Lava_Pillars/Question.json")
+func LoadQuestions(pack int) ([]Question, error) {
+	var dir string
+	if pack == 1 {
+		dir = "game/Lava_Pillars/Questions/Math.json"
+	} else {
+		dir = "game/Lava_Pillars/Questions/Everything.json"
+	}
+	data, err := os.ReadFile(dir)
 	if err != nil {
 		slog.Error("Error with open file question.json", "error", err)
 		return nil, err
@@ -230,7 +236,7 @@ func (g *Game) HasEveryoneAnswered() bool {
 	return true
 }
 func (g *Game) IsWin(gp *GamePlayer) {
-	_ = g.repo.AddResultToProfile(int64(gp.Player.UserID), true)
+	_ = g.repo.AddResultToProfilePillars(int64(gp.Player.UserID), true)
 	gp.Player.Conn.WriteJSON(WinMessage{
 		Type:    "win",
 		Message: "you win!",
@@ -238,7 +244,7 @@ func (g *Game) IsWin(gp *GamePlayer) {
 
 }
 func (g *Game) IsLose(gp *GamePlayer) {
-	_ = g.repo.AddResultToProfile(int64(gp.Player.UserID), false)
+	_ = g.repo.AddResultToProfilePillars(int64(gp.Player.UserID), false)
 	gp.Player.Conn.WriteJSON(LoseMessage{
 		Type:    "lose",
 		Message: "you lose!",

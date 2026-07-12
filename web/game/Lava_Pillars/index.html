@@ -32,17 +32,35 @@
     </div>
 
     <div class="room-overlay" id="roomOverlay">
-        <div class="room-window">
-            <div class="room-header">
-                <h2>Комната: <span id="lobbyCode">---</span></h2>
-                <div class="player-count" id="playerCount">0/4</div>
-            </div>
-            <div class="players-list" id="playersList"></div>
-            <div class="room-footer">
-                <button class="action-btn ready-toggle-btn" id="readyBtn">Статус: Не готов</button>
-                <button class="action-btn start-game-btn disabled" id="startBtn" disabled>Запустить игру</button>
-            </div>
-        </div>
+       <div class="room-window">
+    <div class="room-header">
+        <h2>Комната: <span id="lobbyCode">---</span></h2>
+        <div class="player-count" id="playerCount">0/4</div>
+    </div>
+    
+    <div class="game-mode-selector" id="gameModeSelector">
+        <label class="mode-option">
+            <input type="radio" name="gamePack" value="1" checked>
+            <span class="mode-card">
+                <span class="mode-icon">🧮</span>
+                <span class="mode-title">Math</span>
+            </span>
+        </label>
+        <label class="mode-option">
+            <input type="radio" name="gamePack" value="2">
+            <span class="mode-card">
+                <span class="mode-icon">🌍</span>
+                <span class="mode-title">Everything</span>
+            </span>
+        </label>
+    </div>
+
+    <div class="players-list" id="playersList"></div>
+    <div class="room-footer">
+        <button class="action-btn ready-toggle-btn" id="readyBtn">Статус: Не готов</button>
+        <button class="action-btn start-game-btn disabled" id="startBtn" disabled>Запустить игру</button>
+    </div>
+</div>
     </div>
 
     <div class="room-overlay" id="gameOverOverlay" style="display: none;">

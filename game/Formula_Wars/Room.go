@@ -1,4 +1,4 @@
-package Pillars
+package Formula
 
 import (
 	"crypto/rand"
@@ -13,7 +13,7 @@ import (
 )
 
 type Handler struct {
-	repo    repo.Repository
+	repo    *repo.Repository
 	Manager *RoomManager
 }
 type RoomManager struct {
@@ -24,7 +24,6 @@ type RoomUpdate struct {
 	Type    string          `json:"type"`
 	LobbyID string          `json:"lobby_id"`
 	Players []PlayerPreview `json:"players"`
-	Pack    int             `json:"pack"`
 }
 type PlayerPreview struct {
 	Login string `json:"login"`
@@ -33,23 +32,21 @@ type PlayerPreview struct {
 }
 
 type Room struct {
-	mu           sync.RWMutex
-	Players      map[int]*Player
-	State        RoomState
-	LobbyID      string
-	MaxPlayers   int
-	Game         *Game
-	SelectedPack int
+	mu         sync.RWMutex
+	Players    map[int64]*Player
+	State      RoomState
+	LobbyID    string
+	MaxPlayers int
+	Game       *Game
 }
 
 type Player struct {
-	UserID int
-	Login  string
-	Emoji  string
+	UserID int64  `json:"user_id"`
+	Login  string `json:"login"`
+	Emoji  string `json:"emoji"`
 
-	Conn *websocket.Conn
-
-	IsReady bool
+	Conn    *websocket.Conn `json:"-"`
+	IsReady bool            `json:"ready"`
 }
 
 type RoomState int
@@ -74,7 +71,7 @@ var upgrader = websocket.Upgrader{
 
 func NewHandler(repo *repo.Repository, manager *RoomManager) *Handler {
 	return &Handler{
-		repo:    *repo,
+		repo:    repo, // Передаем указатель напрямую
 		Manager: manager,
 	}
 }
@@ -91,7 +88,7 @@ func (h *Handler) CurrentPlayer(c *gin.Context, conn *websocket.Conn) (*Player, 
 		return nil, err
 	}
 	Player := &Player{
-		UserID: int(userID),
+		UserID: userID,
 		Login:  login,
 		Emoji:  emoji,
 
@@ -143,7 +140,7 @@ func (m *RoomManager) CreateRoom(lobbyID string) *Room {
 		State:   Waiting,
 
 		MaxPlayers: 4,
-		Players:    make(map[int]*Player),
+		Players:    make(map[int64]*Player),
 	}
 
 	m.mu.Lock()
@@ -153,72 +150,77 @@ func (m *RoomManager) CreateRoom(lobbyID string) *Room {
 	return room
 }
 
+// На примере метода CreateLobby в Room.go:
+
 func (h *Handler) CreateLobby(c *gin.Context) {
+
 	conn, err := upgrader.Upgrade(c.Writer, c.Request, nil)
 	if err != nil {
-		slog.Error("Failed to set websocket upgrade", "err", err)
 		return
 	}
-	defer conn.Close()
+
+	player, err := h.CurrentPlayer(c, conn)
+	if err != nil {
+		conn.Close()
+		return
+	}
+
 	lobbyID, err := h.Manager.GenerateUniqueLobbyID()
 	if err != nil {
-		slog.Error("Failed to Generate the Lobby Code", "error", err)
+		conn.Close()
 		return
 	}
 
 	room := h.Manager.CreateRoom(lobbyID)
 
-	Player, err := h.CurrentPlayer(c, conn)
-	if err != nil {
-		if err == ErrUnauthorized {
-			c.JSON(http.StatusUnauthorized, gin.H{
-				"error": "no user in context",
-			})
-			return
-		} else {
-			slog.Error("db error", "err", err)
+	room.AddPlayer(player)
 
-			c.JSON(http.StatusInternalServerError, gin.H{
-				"error": "internal server error",
-			})
-			return
-		}
-
-	}
-
-	room.AddPlayer(Player)
-	err = conn.WriteJSON(gin.H{
+	player.Conn.WriteJSON(gin.H{
 		"type":     "room_created",
 		"lobby_id": lobbyID,
 	})
-	if err != nil {
-		return
-	}
-	for {
-		var msg Message
-		if err := conn.ReadJSON(&msg); err != nil {
-			room.DeletePlayer(Player)
-			room.Broadcast(room.Snapshot())
-			break
-		}
-		h.HandleMessage(room, Player, msg)
 
-	}
+	room.Broadcast(room.Snapshot())
+
+	h.ReadLoop(room, player)
 }
 
 func (r *Room) AddPlayer(player *Player) {
 	r.mu.Lock()
-	defer r.mu.Unlock()
 	r.Players[player.UserID] = player
+	r.mu.Unlock()
 
+	r.Broadcast(r.Snapshot())
 }
 
 func (r *Room) DeletePlayer(player *Player) {
 	r.mu.Lock()
-	defer r.mu.Unlock()
 	delete(r.Players, player.UserID)
-}
+	r.mu.Unlock()
 
+	r.Broadcast(r.Snapshot())
+}
+func (h *Handler) ReadLoop(room *Room, player *Player) {
+	defer func() {
+		room.DeletePlayer(player)
+		room.Broadcast(room.Snapshot())
+		player.Conn.Close()
+	}()
+
+	for {
+		var msg Message
+
+		if err := player.Conn.ReadJSON(&msg); err != nil {
+			slog.Info("player disconnected",
+				"user_id", player.UserID,
+				"err", err,
+			)
+			return
+		}
+
+		h.HandleMessage(room, player, msg)
+	}
+}
 func (m *RoomManager) GetRoom(lobbyID string) (*Room, bool) {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
@@ -233,44 +235,15 @@ func (r *Room) IsFull() bool {
 	return len(r.Players) >= r.MaxPlayers
 }
 func (h *Handler) JoinRoom(c *gin.Context) {
+
 	lobbyID := c.Param("id")
-	if lobbyID == "" {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": "empty lobbyID",
-		})
-		return
-	}
 
 	room, ok := h.Manager.GetRoom(lobbyID)
 	if !ok {
 		c.JSON(http.StatusNotFound, gin.H{
-			"error": "Room not found",
+			"error": "room not found",
 		})
 		return
-	}
-	conn, err := upgrader.Upgrade(c.Writer, c.Request, nil)
-	if err != nil {
-		slog.Error("Failed to set websocket upgrade", "err", err)
-		return
-	}
-	defer conn.Close()
-
-	Player, err := h.CurrentPlayer(c, conn)
-	if err != nil {
-		if err == ErrUnauthorized {
-			c.JSON(http.StatusUnauthorized, gin.H{
-				"error": "no user in context",
-			})
-			return
-		} else {
-			slog.Error("db error", "err", err)
-
-			c.JSON(http.StatusInternalServerError, gin.H{
-				"error": "internal server error",
-			})
-			return
-		}
-
 	}
 
 	if room.IsFull() {
@@ -279,18 +252,23 @@ func (h *Handler) JoinRoom(c *gin.Context) {
 		})
 		return
 	}
-	room.AddPlayer(Player)
-	room.Broadcast(room.Snapshot())
-	for {
-		var msg Message
-		if err := conn.ReadJSON(&msg); err != nil {
-			room.DeletePlayer(Player)
-			room.Broadcast(room.Snapshot())
-			break
-		}
-		h.HandleMessage(room, Player, msg)
 
+	conn, err := upgrader.Upgrade(c.Writer, c.Request, nil)
+	if err != nil {
+		return
 	}
+
+	player, err := h.CurrentPlayer(c, conn)
+	if err != nil {
+		conn.Close()
+		return
+	}
+
+	room.AddPlayer(player)
+
+	room.Broadcast(room.Snapshot())
+
+	h.ReadLoop(room, player)
 }
 func (m *RoomManager) GetRandomRoom() (*Room, bool) {
 	m.mu.RLock()
@@ -305,52 +283,31 @@ func (m *RoomManager) GetRandomRoom() (*Room, bool) {
 	return nil, false
 }
 func (h *Handler) JoinRandomRoom(c *gin.Context) {
-	room, exists := h.Manager.GetRandomRoom()
-	if !exists {
+
+	room, ok := h.Manager.GetRandomRoom()
+	if !ok {
 		c.JSON(http.StatusNotFound, gin.H{
-			"code":    "NO_FREE_ROOMS",
-			"message": "No available spots in any rooms. Please create a new one.",
+			"error": "no free rooms",
 		})
 		return
 	}
 
 	conn, err := upgrader.Upgrade(c.Writer, c.Request, nil)
 	if err != nil {
-		slog.Error("Failed to set websocket upgrade", "err", err)
 		return
 	}
-	defer conn.Close()
 
-	Player, err := h.CurrentPlayer(c, conn)
+	player, err := h.CurrentPlayer(c, conn)
 	if err != nil {
-		if err == ErrUnauthorized {
-			c.JSON(http.StatusUnauthorized, gin.H{
-				"error": "no user in context",
-			})
-			return
-		} else {
-			slog.Error("db error", "err", err)
-
-			c.JSON(http.StatusInternalServerError, gin.H{
-				"error": "internal server error",
-			})
-			return
-		}
-
+		conn.Close()
+		return
 	}
-	room.AddPlayer(Player)
+
+	room.AddPlayer(player)
+
 	room.Broadcast(room.Snapshot())
-	for {
-		var msg Message
-		if err := conn.ReadJSON(&msg); err != nil {
-			room.DeletePlayer(Player)
-			room.Broadcast(room.Snapshot())
-			break
-		}
-		h.HandleMessage(room, Player, msg)
 
-	}
-
+	h.ReadLoop(room, player)
 }
 
 func (r *Room) Snapshot() RoomUpdate {
@@ -365,94 +322,88 @@ func (r *Room) Snapshot() RoomUpdate {
 			Ready: player.IsReady,
 		})
 	}
-	packToSend := r.SelectedPack
-	if packToSend == 0 {
-		packToSend = 1 // Дефолтный пак Math, если еще ничего не выбрано
-	}
+
 	return RoomUpdate{
 		Type:    "room_update",
 		LobbyID: r.LobbyID,
 		Players: players,
-		Pack:    packToSend,
 	}
 }
 func (r *Room) Broadcast(v any) {
-	r.mu.RLock()
-	defer r.mu.RUnlock()
 
-	for _, player := range r.Players {
-		err := player.Conn.WriteJSON(v)
-		if err != nil {
+	r.mu.RLock()
+
+	players := make([]*Player, 0, len(r.Players))
+	for _, p := range r.Players {
+		players = append(players, p)
+	}
+
+	r.mu.RUnlock()
+
+	for _, p := range players {
+		if err := p.Conn.WriteJSON(v); err != nil {
 			slog.Error(
-				"failed to send message",
-				"user_id", player.UserID,
+				"broadcast failed",
+				"user_id", p.UserID,
 				"err", err,
 			)
 		}
 	}
 }
 func (h *Handler) HandleMessage(room *Room, player *Player, msg Message) {
+	room.mu.RLock()
+	gameRunning := room.State == Playing && room.Game != nil
+	room.mu.RUnlock()
+
+	if gameRunning && msg.Type == "game_action" {
+		room.Game.HandleGameAction(player.UserID, msg.Data)
+		return
+	}
+
 	switch msg.Type {
 
 	case "ready":
+		room.mu.Lock()
 		player.IsReady = true
+		room.mu.Unlock()
+
 		room.Broadcast(room.Snapshot())
 
 	case "unready":
+		room.mu.Lock()
 		player.IsReady = false
+		room.mu.Unlock()
+
 		room.Broadcast(room.Snapshot())
+
 	case "leave":
 		room.DeletePlayer(player)
 		room.Broadcast(room.Snapshot())
+
 	case "start":
+		room.mu.RLock()
 		for _, p := range room.Players {
 			if !p.IsReady {
-				_ = player.Conn.WriteJSON(gin.H{
-					"type":    "error",
-					"message": "not all players are ready",
+				room.mu.RUnlock()
+
+				_ = player.Conn.WriteJSON(ErrorMessage{
+					Type:    "error",
+					Message: "not all players are ready",
 				})
 				return
 			}
-
 		}
+		room.mu.RUnlock()
 
+		room.mu.Lock()
 		room.State = Playing
+		room.Game = NewGame(room, h.repo)
+		room.mu.Unlock()
+
 		room.Broadcast(GameStartedMessage{
 			Type: "game_started",
 		})
-		packToStart := room.SelectedPack
-		if packToStart == 0 {
-			packToStart = 1
-		}
 
-		room.Game = NewGame(room, &h.repo, packToStart)
-	case "answer":
-		gp := IsPlayerAlive(room, player)
-		if gp == nil {
-			return
-		}
-		gp.Answered = true
-		gp.Answer = msg.Answer
-		if room.Game.HasEveryoneAnswered() {
-			room.Game.CalculateResult()
-		}
-	case "select_pack":
-		room.mu.Lock()
-		if len(room.Players) > 0 {
-			room.SelectedPack = msg.Pack
-		}
-		room.mu.Unlock()
-		// Рассылаем обновление всем участникам
-		room.Broadcast(room.Snapshot())
-	case "timeout":
-		gp := IsPlayerAlive(room, player)
-		if gp == nil {
-			return
-		}
-		gp.Answered = true
-		gp.Answer = NoAnswer
-		if room.Game.HasEveryoneAnswered() {
-			room.Game.CalculateResult()
-		}
+		room.Game.StartLoop()
 	}
 }

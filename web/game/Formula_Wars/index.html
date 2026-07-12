@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Formula Wars</title>
+    <link rel="stylesheet" href="/Formula_Wars-assets/style.css">
+</head>
+<body>
+
+    <div id="countdownOverlay" class="overlay" style="display: none;">
+        <div id="countdownNumber">3</div>
+    </div>
+
+    <div id="gameOverOverlay" class="overlay" style="display: none;">
+        <div class="game-over-box">
+            <h1 id="gameOverTitle">🏆 Конец игры</h1>
+            <p id="gameOverSub"></p>
+            <button onclick="window.location.reload()" class="btn">В лобби</button>
+        </div>
+    </div>
+
+    <div id="roomOverlay" class="room-overlay">
+        <div class="lobby-container">
+            <h2>Комната ожидания: <span id="lobbyCode">XXXX</span></h2>
+            <p>Игроков в лобби: <span id="playerCount">0/4</span></p>
+            
+            <div id="playersList" class="players-list">
+                </div>
+
+            <div class="lobby-controls">
+                <button id="readyBtn" class="btn btn-secondary">Статус: Не готов</button>
+                <button id="startBtn" class="btn btn-primary disabled" disabled>Старт игры</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="gameArena" class="game-arena blur-mode">
+        <header class="game-header">
+            <div class="logo">📐 Formula Wars</div>
+            <div id="roundCounter" class="round-counter">Ожидание хода...</div>
+        </header>
+
+       <main class="game-content-layout">
+    <div class="center-game-zone">
+        <div class="canvas-container">
+            <canvas id="battleCanvas" width="700" height="700"></canvas>
+        </div>
+
+        <div class="formula-panel-bottom">
+            <div class="formula-header-info">
+                <h3>Ввод формулы траектории</h3>
+                <p class="formula-tip">Стрела летит слева направо. Используйте переменную <code>x</code>. Например: <code>-0.5*x^2 + 5*x</code></p>
+            </div>
+            <div class="formula-input-row">
+                <span class="f-fx">f(x) = </span>
+                <input type="text" id="formulaInput" placeholder="Введите математическую функцию..." disabled>
+                <button id="shootBtn" class="btn btn-primary" disabled>Огонь! 🚀</button>
+            </div>
+        </div>
+    </div>
+
+    <aside class="sidebar-right">
+        <div class="chat-container">
+            <div class="chat-header-title">📋 Игровой чат</div>
+            <div id="chatMessages" class="chat-messages"></div>
+            <form id="chatForm" class="chat-form">
+                <input type="text" id="chatInput" placeholder="Написать в чат..." autocomplete="off">
+                <button type="submit">➔</button>
+            </form>
+        </div>
+    </aside>
+</main>
+    </div>
+
+    <script src="/Formula_Wars-assets/script.js"></script>
+</body>
+</html>
